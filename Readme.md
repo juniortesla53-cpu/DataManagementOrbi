@@ -20,10 +20,6 @@ npm run dev
 ```
 Roda na porta 5173.
 
-### Login padrão (admin)
-- **Login:** alberto.junior
-- **Senha:** 332769
-
 ## Tecnologias
 - **Frontend:** React + TypeScript + Tailwind CSS + Vite
 - **Backend:** Node.js + Express + TypeScript
