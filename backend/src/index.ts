@@ -8,6 +8,7 @@ import reportsRoutes from './routes/reports.routes';
 import usersRoutes from './routes/users.routes';
 import permissionsRoutes from './routes/permissions.routes';
 import { authMiddleware, adminMiddleware } from './auth';
+import powerbiRoutes from './routes/powerbi.routes';
 
 dotenv.config();
 
@@ -47,6 +48,51 @@ app.use('/api/reports', reportsRoutes);
 app.use('/api/admin/users', usersRoutes);
 app.use('/api/admin/reports', adminReportsRouter);
 app.use('/api/admin/permissions', permissionsRoutes);
+app.use('/api/admin/powerbi', powerbiRoutes);
+
+// Public embed endpoint (any authenticated user)
+app.get('/api/reports/:id/embed', authMiddleware, async (req: any, res: any) => {
+  const { getAccessToken } = require('./routes/powerbi.routes');
+  const axiosLib = require('axios').default;
+  const report = db.prepare('SELECT * FROM reports WHERE id = ? AND ativo = 1').get(parseInt(req.params.id)) as any;
+  if (!report) return res.status(404).json({ error: 'Relatório não encontrado' });
+
+  // Check permission
+  if (req.user.role !== 'admin') {
+    const perm = db.prepare('SELECT id FROM permissions WHERE user_id = ? AND report_id = ?').get(req.user.userId, report.id);
+    if (!perm) return res.status(403).json({ error: 'Sem permissão' });
+  }
+
+  const accessToken = await getAccessToken();
+  if (!accessToken) return res.json({ embedUrl: report.link_powerbi, fallback: true });
+
+  const pbiUrl = report.link_powerbi;
+  const groupMatch = pbiUrl.match(/groups\/([^/]+)/);
+  const reportMatch = pbiUrl.match(/reports\/([^/]+)/);
+  if (!reportMatch) return res.json({ embedUrl: pbiUrl, fallback: true });
+
+  const pbiReportId = reportMatch[1];
+  const groupId = groupMatch?.[1];
+  const POWERBI_API = 'https://api.powerbi.com/v1.0/myorg';
+
+  try {
+    let embedUrl: string, embedToken: string;
+    if (groupId && groupId !== 'me') {
+      const info = await axiosLib.get(`${POWERBI_API}/groups/${groupId}/reports/${pbiReportId}`, { headers: { Authorization: `Bearer ${accessToken}` } });
+      embedUrl = info.data.embedUrl;
+      const tok = await axiosLib.post(`${POWERBI_API}/groups/${groupId}/reports/${pbiReportId}/GenerateToken`, { accessLevel: 'View' }, { headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' } });
+      embedToken = tok.data.token;
+    } else {
+      const info = await axiosLib.get(`${POWERBI_API}/reports/${pbiReportId}`, { headers: { Authorization: `Bearer ${accessToken}` } });
+      embedUrl = info.data.embedUrl;
+      const tok = await axiosLib.post(`${POWERBI_API}/reports/${pbiReportId}/GenerateToken`, { accessLevel: 'View' }, { headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' } });
+      embedToken = tok.data.token;
+    }
+    res.json({ embedUrl, embedToken, reportId: pbiReportId, fallback: false });
+  } catch (err: any) {
+    res.json({ embedUrl: pbiUrl, fallback: true, error: err.response?.data?.error?.message || err.message });
+  }
+});
 
 app.listen(PORT, () => {
   console.log(`Orbi Backend running on port ${PORT}`);

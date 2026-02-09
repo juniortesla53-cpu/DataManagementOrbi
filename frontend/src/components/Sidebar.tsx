@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { LayoutDashboard, FileBarChart, Users, Shield, Settings, LogOut, ChevronLeft, ChevronRight, Menu } from 'lucide-react';
+import { LayoutDashboard, FileBarChart, Users, Shield, Plug, LogOut, ChevronLeft, ChevronRight } from 'lucide-react';
 
 export default function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
@@ -14,6 +14,7 @@ export default function Sidebar() {
       { to: '/admin/users', icon: Users, label: 'Usuários' },
       { to: '/admin/reports', icon: FileBarChart, label: 'Relatórios' },
       { to: '/admin/permissions', icon: Shield, label: 'Permissões' },
+      { to: '/admin/powerbi', icon: Plug, label: 'Power BI' },
     ] : []),
   ];
 

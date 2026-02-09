@@ -41,6 +41,12 @@ export function initDatabase() {
       report_id INTEGER REFERENCES reports(id) ON DELETE CASCADE,
       UNIQUE(user_id, report_id)
     );
+
+    CREATE TABLE IF NOT EXISTS settings (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
   `);
 
   const count = db.prepare('SELECT COUNT(*) as c FROM users').get() as any;

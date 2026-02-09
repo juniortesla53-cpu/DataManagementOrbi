@@ -8,6 +8,7 @@ import ReportView from './pages/ReportView';
 import ManageUsers from './pages/Admin/ManageUsers';
 import ManageReports from './pages/Admin/ManageReports';
 import ManagePermissions from './pages/Admin/ManagePermissions';
+import PowerBISettings from './pages/Admin/PowerBISettings';
 
 function AppLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -30,6 +31,7 @@ export default function App() {
       <Route path="/admin/users" element={<ProtectedRoute adminOnly><AppLayout><ManageUsers /></AppLayout></ProtectedRoute>} />
       <Route path="/admin/reports" element={<ProtectedRoute adminOnly><AppLayout><ManageReports /></AppLayout></ProtectedRoute>} />
       <Route path="/admin/permissions" element={<ProtectedRoute adminOnly><AppLayout><ManagePermissions /></AppLayout></ProtectedRoute>} />
+      <Route path="/admin/powerbi" element={<ProtectedRoute adminOnly><AppLayout><PowerBISettings /></AppLayout></ProtectedRoute>} />
       <Route path="*" element={<Navigate to="/" />} />
     </Routes>
   );
