@@ -1,53 +1,125 @@
 import { useState, useEffect } from 'react';
-import { Plus, Trash2, X } from 'lucide-react';
+import { Plus, Trash2, X, Loader2, AlertCircle } from 'lucide-react';
+import { useApi } from '../../hooks/useApi';
+import { useToast } from '../../contexts/ToastContext';
 import api from '../../api';
 
 export default function ManagePermissions() {
-  const [perms, setPerms] = useState<any[]>([]);
+  const { data: perms, loading, error, refetch } = useApi<any[]>('/admin/permissions');
+  const { showSuccess, showError } = useToast();
   const [users, setUsers] = useState<any[]>([]);
   const [reports, setReports] = useState<any[]>([]);
+  const [loadingLists, setLoadingLists] = useState(true);
   const [modal, setModal] = useState(false);
   const [selUser, setSelUser] = useState('');
   const [selReport, setSelReport] = useState('');
+  const [granting, setGranting] = useState(false);
 
-  const load = () => {
-    api.get('/admin/permissions').then(r => setPerms(r.data));
-    api.get('/admin/users').then(r => setUsers(r.data.filter((u:any) => u.ativo)));
-    api.get('/admin/reports').then(r => setReports(r.data.filter((r:any) => r.ativo)));
-  };
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    const loadLists = async () => {
+      try {
+        const [usersRes, reportsRes] = await Promise.all([
+          api.get('/admin/users'),
+          api.get('/admin/reports')
+        ]);
+        setUsers(usersRes.data.filter((u: any) => u.ativo));
+        setReports(reportsRes.data.filter((r: any) => r.ativo));
+      } catch (err: any) {
+        showError('Erro ao carregar listas de usuários e relatórios');
+      } finally {
+        setLoadingLists(false);
+      }
+    };
+    loadLists();
+  }, []);
 
   const grant = async () => {
-    if (!selUser || !selReport) return;
-    await api.post('/admin/permissions', { user_id: parseInt(selUser), report_id: parseInt(selReport) });
-    setModal(false); load();
+    if (!selUser || !selReport) {
+      showError('Selecione um usuário e um relatório');
+      return;
+    }
+
+    setGranting(true);
+    try {
+      await api.post('/admin/permissions', { user_id: parseInt(selUser), report_id: parseInt(selReport) });
+      showSuccess('Permissão concedida com sucesso');
+      setModal(false);
+      refetch();
+    } catch (err: any) {
+      showError(err.response?.data?.error || 'Erro ao conceder permissão');
+    } finally {
+      setGranting(false);
+    }
   };
 
-  const revoke = async (id: number) => { await api.delete(`/admin/permissions/${id}`); load(); };
+  const revoke = async (id: number) => { 
+    if (!confirm('Revogar esta permissão?')) return;
+    
+    try {
+      await api.delete(`/admin/permissions/${id}`);
+      showSuccess('Permissão revogada');
+      refetch();
+    } catch (err: any) {
+      showError(err.response?.data?.error || 'Erro ao revogar permissão');
+    }
+  };
+
+  if (loading || loadingLists) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="w-8 h-8 animate-spin text-orbi-accent" />
+          <p className="text-orbi-muted text-sm">Carregando...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="flex flex-col items-center gap-3 text-center max-w-md">
+          <AlertCircle className="w-12 h-12 text-orbi-danger" />
+          <h3 className="text-lg font-semibold">Erro ao carregar</h3>
+          <p className="text-orbi-muted text-sm">{error}</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-lg font-bold">Gerenciar Permissões</h1>
-        <button onClick={() => { setSelUser(''); setSelReport(''); setModal(true); }} className="flex items-center gap-2 px-3 py-1.5 bg-orbi-accent hover:bg-blue-600 rounded-lg text-xs font-medium transition-colors"><Plus size={14} /> Nova Permissão</button>
+        <button onClick={() => { setSelUser(''); setSelReport(''); setModal(true); }} 
+          className="flex items-center gap-2 px-3 py-1.5 bg-orbi-accent hover:bg-blue-600 rounded-lg text-xs font-medium transition-colors">
+          <Plus size={14} /> Nova Permissão
+        </button>
       </div>
       <div className="bg-orbi-card border border-slate-700/50 rounded-xl overflow-hidden">
         <table className="w-full text-sm">
           <thead><tr className="border-b border-slate-700/50 text-orbi-muted text-xs">
-            <th className="text-left p-3">Usuário</th><th className="text-left p-3">Login</th><th className="text-left p-3">Relatório</th><th className="p-3"></th>
+            <th className="text-left p-3">Usuário</th>
+            <th className="text-left p-3">Login</th>
+            <th className="text-left p-3">Relatório</th>
+            <th className="p-3"></th>
           </tr></thead>
           <tbody>
-            {perms.map(p => (
+            {(perms || []).map(p => (
               <tr key={p.id} className="border-b border-slate-700/30 hover:bg-slate-700/20">
                 <td className="p-3">{p.user_nome}</td>
                 <td className="p-3 text-orbi-muted">{p.login_rede}</td>
                 <td className="p-3">{p.report_nome}</td>
                 <td className="p-3 text-right">
-                  <button onClick={() => revoke(p.id)} className="p-1 text-orbi-muted hover:text-orbi-danger"><Trash2 size={14} /></button>
+                  <button onClick={() => revoke(p.id)} className="p-1 text-orbi-muted hover:text-orbi-danger">
+                    <Trash2 size={14} />
+                  </button>
                 </td>
               </tr>
             ))}
-            {perms.length === 0 && <tr><td colSpan={4} className="p-6 text-center text-orbi-muted">Nenhuma permissão cadastrada</td></tr>}
+            {(!perms || perms.length === 0) && (
+              <tr><td colSpan={4} className="p-6 text-center text-orbi-muted">Nenhuma permissão cadastrada</td></tr>
+            )}
           </tbody>
         </table>
       </div>
@@ -61,7 +133,7 @@ export default function ManagePermissions() {
             </div>
             <div className="space-y-3">
               <div>
-                <label className="block text-[10px] text-orbi-muted mb-1">USUÁRIO</label>
+                <label className="block text-[10px] text-orbi-muted mb-1">USUÁRIO <span className="text-orbi-danger">*</span></label>
                 <select value={selUser} onChange={e => setSelUser(e.target.value)}
                   className="w-full px-2 py-1.5 bg-orbi-bg border border-slate-700 rounded text-xs focus:outline-none focus:border-orbi-accent">
                   <option value="">Selecione...</option>
@@ -69,7 +141,7 @@ export default function ManagePermissions() {
                 </select>
               </div>
               <div>
-                <label className="block text-[10px] text-orbi-muted mb-1">RELATÓRIO</label>
+                <label className="block text-[10px] text-orbi-muted mb-1">RELATÓRIO <span className="text-orbi-danger">*</span></label>
                 <select value={selReport} onChange={e => setSelReport(e.target.value)}
                   className="w-full px-2 py-1.5 bg-orbi-bg border border-slate-700 rounded text-xs focus:outline-none focus:border-orbi-accent">
                   <option value="">Selecione...</option>
@@ -77,7 +149,11 @@ export default function ManagePermissions() {
                 </select>
               </div>
             </div>
-            <button onClick={grant} className="mt-4 w-full py-2 bg-orbi-accent hover:bg-blue-600 rounded-lg text-sm font-medium transition-colors">Conceder Acesso</button>
+            <button onClick={grant} disabled={granting}
+              className="mt-4 w-full py-2 bg-orbi-accent hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2">
+              {granting && <Loader2 size={16} className="animate-spin" />}
+              {granting ? 'Concedendo...' : 'Conceder Acesso'}
+            </button>
           </div>
         </div>
       )}
