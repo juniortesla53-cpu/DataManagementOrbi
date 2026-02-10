@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { LayoutDashboard, FileBarChart, Users, Shield, Plug, LogOut, ChevronLeft, ChevronRight } from 'lucide-react';
+import { LayoutDashboard, FileBarChart, Users, Shield, BarChart3, LogOut, ChevronLeft, ChevronRight } from 'lucide-react';
 import NexusLogo from './NexusLogo';
 
 export default function Sidebar() {
@@ -17,7 +17,7 @@ export default function Sidebar() {
     { to: '/admin/users', icon: Users, label: 'Usuários' },
     { to: '/admin/reports', icon: FileBarChart, label: 'Relatórios' },
     { to: '/admin/permissions', icon: Shield, label: 'Permissões' },
-    { to: '/admin/powerbi', icon: Plug, label: 'Power BI' },
+    { to: '/admin/powerbi', icon: BarChart3, label: 'Power BI' },
   ] : [];
 
   const isActive = (path: string) => loc.pathname === path;
