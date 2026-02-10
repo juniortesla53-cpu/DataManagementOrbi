@@ -54,6 +54,6 @@ app.use((err: any, req: Request, res: Response, next: NextFunction) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`🚀 Orbi Backend running on port ${PORT}`);
+  console.log(`🚀 Nexus BI Backend running on port ${PORT}`);
   console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
 });
