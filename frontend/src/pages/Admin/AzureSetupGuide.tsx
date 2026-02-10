@@ -17,15 +17,15 @@ function CopyButton({ text }: { text: string }) {
   };
 
   return (
-    <button onClick={copy} className="p-1 rounded hover:bg-orbi-bg transition-colors" title="Copiar">
-      {copied ? <CheckCircle size={14} className="text-orbi-success" /> : <Copy size={14} className="text-orbi-muted" />}
+    <button onClick={copy} className="p-1 rounded hover:bg-nexus-bg transition-colors" title="Copiar">
+      {copied ? <CheckCircle size={14} className="text-nexus-success" /> : <Copy size={14} className="text-nexus-muted" />}
     </button>
   );
 }
 
 function StepNumber({ n }: { n: number }) {
   return (
-    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-orbi-purple to-orbi-blue flex items-center justify-center text-sm font-bold flex-shrink-0 text-white shadow-md">
+    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-nexus-purple to-nexus-blue flex items-center justify-center text-sm font-bold flex-shrink-0 text-white shadow-md">
       {n}
     </div>
   );
@@ -33,12 +33,12 @@ function StepNumber({ n }: { n: number }) {
 
 function StepCard({ step, title, children }: { step: number; title: string; children: React.ReactNode }) {
   return (
-    <div className="bg-white border border-orbi-border rounded-xl p-5 shadow-card">
+    <div className="bg-white border border-nexus-border rounded-xl p-5 shadow-card">
       <div className="flex items-center gap-3 mb-4">
         <StepNumber n={step} />
-        <h3 className="font-semibold text-orbi-text">{title}</h3>
+        <h3 className="font-semibold text-nexus-text">{title}</h3>
       </div>
-      <div className="ml-11 space-y-3 text-sm text-orbi-textSecondary leading-relaxed">
+      <div className="ml-11 space-y-3 text-sm text-nexus-textSecondary leading-relaxed">
         {children}
       </div>
     </div>
@@ -47,8 +47,8 @@ function StepCard({ step, title, children }: { step: number; title: string; chil
 
 function CodeBlock({ children }: { children: string }) {
   return (
-    <div className="flex items-center gap-2 bg-orbi-bg border border-orbi-border rounded-lg px-3 py-2 font-mono text-xs">
-      <code className="flex-1 text-orbi-purple break-all">{children}</code>
+    <div className="flex items-center gap-2 bg-nexus-bg border border-nexus-border rounded-lg px-3 py-2 font-mono text-xs">
+      <code className="flex-1 text-nexus-purple break-all">{children}</code>
       <CopyButton text={children} />
     </div>
   );
@@ -77,25 +77,25 @@ export default function AzureSetupGuide() {
     <div className="p-6 max-w-3xl pb-12">
       {/* Header */}
       <div className="flex items-center gap-3 mb-6">
-        <button onClick={() => nav('/admin/powerbi')} className="p-1.5 rounded-lg hover:bg-orbi-bg text-orbi-muted transition-colors">
+        <button onClick={() => nav('/admin/powerbi')} className="p-1.5 rounded-lg hover:bg-nexus-bg text-nexus-muted transition-colors">
           <ArrowLeft size={18} />
         </button>
         <div>
-          <h1 className="text-lg font-bold text-orbi-text">Configurar acesso ao Power BI</h1>
-          <p className="text-xs text-orbi-muted">Passo a passo para registrar o aplicativo no Azure e conectar ao Orbi</p>
+          <h1 className="text-lg font-bold text-nexus-text">Configurar acesso ao Power BI</h1>
+          <p className="text-xs text-nexus-muted">Passo a passo para registrar o aplicativo no Azure e conectar ao Nexus BI</p>
         </div>
       </div>
 
       {/* Overview */}
       <div className="bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 rounded-xl p-5 mb-6">
-        <h2 className="font-semibold text-sm mb-2 text-orbi-text">Por que isso é necessário?</h2>
-        <p className="text-xs text-orbi-textSecondary leading-relaxed">
+        <h2 className="font-semibold text-sm mb-2 text-nexus-text">Por que isso é necessário?</h2>
+        <p className="text-xs text-nexus-textSecondary leading-relaxed">
           O Power BI usa o sistema de autenticação da Microsoft (Azure AD) para permitir que aplicativos externos acessem os relatórios.
-          Precisamos registrar o Orbi como um "aplicativo autorizado" na sua organização. Isso é feito uma única vez e leva cerca de <strong>5 minutos</strong>.
+          Precisamos registrar o Nexus BI como um "aplicativo autorizado" na sua organização. Isso é feito uma única vez e leva cerca de <strong>5 minutos</strong>.
         </p>
         <div className="mt-3 flex flex-wrap gap-2">
-          <span className="text-[10px] px-2 py-1 rounded-full bg-purple-100 text-orbi-purple font-medium">✅ Funciona com Power BI Pro</span>
-          <span className="text-[10px] px-2 py-1 rounded-full bg-blue-100 text-orbi-blue font-medium">✅ Funciona com Power BI Free</span>
+          <span className="text-[10px] px-2 py-1 rounded-full bg-purple-100 text-nexus-purple font-medium">✅ Funciona com Power BI Pro</span>
+          <span className="text-[10px] px-2 py-1 rounded-full bg-blue-100 text-nexus-blue font-medium">✅ Funciona com Power BI Free</span>
           <span className="text-[10px] px-2 py-1 rounded-full bg-green-100 text-green-700 font-medium">✅ Gratuito</span>
         </div>
       </div>
@@ -110,7 +110,7 @@ export default function AzureSetupGuide() {
             href="https://portal.azure.com/#blade/Microsoft_AAD_RegisteredApps/ApplicationsListBlade"
             target="_blank"
             rel="noreferrer"
-            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 hover:bg-blue-100 text-orbi-blue rounded-lg text-xs font-medium transition-colors">
+            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 hover:bg-blue-100 text-nexus-blue rounded-lg text-xs font-medium transition-colors">
             <ExternalLink size={14} />
             Abrir Azure Portal — App Registrations
           </a>
@@ -122,62 +122,62 @@ export default function AzureSetupGuide() {
         {/* Step 2 */}
         <StepCard step={2} title="Criar novo registro de aplicativo">
           <p>Clique no botão <strong>"+ New registration"</strong> (Novo registro) no topo da página.</p>
-          <div className="bg-orbi-bg rounded-lg p-4 border border-orbi-border">
+          <div className="bg-nexus-bg rounded-lg p-4 border border-nexus-border">
             <div className="space-y-3">
               <div>
-                <span className="text-[10px] text-orbi-muted block mb-1 font-semibold">Nome do aplicativo:</span>
-                <CodeBlock>Orbi - Power BI Hub</CodeBlock>
+                <span className="text-[10px] text-nexus-muted block mb-1 font-semibold">Nome do aplicativo:</span>
+                <CodeBlock>Nexus BI - Power BI Hub</CodeBlock>
               </div>
               <div>
-                <span className="text-[10px] text-orbi-muted block mb-1 font-semibold">Tipos de conta suportados:</span>
-                <p className="text-xs text-orbi-text">Selecione: <strong>"Accounts in this organizational directory only"</strong></p>
-                <p className="text-[10px] text-orbi-muted">(Contas neste diretório organizacional apenas — Single tenant)</p>
+                <span className="text-[10px] text-nexus-muted block mb-1 font-semibold">Tipos de conta suportados:</span>
+                <p className="text-xs text-nexus-text">Selecione: <strong>"Accounts in this organizational directory only"</strong></p>
+                <p className="text-[10px] text-nexus-muted">(Contas neste diretório organizacional apenas — Single tenant)</p>
               </div>
               <div>
-                <span className="text-[10px] text-orbi-muted block mb-1 font-semibold">URI de redirecionamento:</span>
-                <p className="text-xs mb-1 text-orbi-text">Tipo: <strong>Web</strong></p>
+                <span className="text-[10px] text-nexus-muted block mb-1 font-semibold">URI de redirecionamento:</span>
+                <p className="text-xs mb-1 text-nexus-text">Tipo: <strong>Web</strong></p>
                 <CodeBlock>{REDIRECT_URI}</CodeBlock>
               </div>
             </div>
           </div>
           <p>Clique em <strong>"Register"</strong> (Registrar).</p>
           <InfoBox type="warning">
-            Se o Orbi estiver rodando em um servidor (não localhost), ajuste a URI de redirecionamento para o endereço do servidor.
+            Se o Nexus BI estiver rodando em um servidor (não localhost), ajuste a URI de redirecionamento para o endereço do servidor.
           </InfoBox>
         </StepCard>
 
         {/* Step 3 */}
         <StepCard step={3} title="Copiar o Tenant ID e Client ID">
           <p>Após o registro, você será redirecionado para a página do aplicativo. Na seção <strong>"Overview"</strong> (Visão geral), copie:</p>
-          <div className="bg-orbi-bg rounded-lg p-4 border border-orbi-border space-y-3">
+          <div className="bg-nexus-bg rounded-lg p-4 border border-nexus-border space-y-3">
             <div className="flex items-center gap-3">
-              <ChevronRight size={14} className="text-orbi-purple flex-shrink-0" />
+              <ChevronRight size={14} className="text-nexus-purple flex-shrink-0" />
               <div>
-                <p className="text-xs font-medium text-orbi-text">Application (client) ID</p>
-                <p className="text-[10px] text-orbi-muted">Este é o <strong>Client ID</strong> — copie e guarde</p>
+                <p className="text-xs font-medium text-nexus-text">Application (client) ID</p>
+                <p className="text-[10px] text-nexus-muted">Este é o <strong>Client ID</strong> — copie e guarde</p>
               </div>
             </div>
             <div className="flex items-center gap-3">
-              <ChevronRight size={14} className="text-orbi-purple flex-shrink-0" />
+              <ChevronRight size={14} className="text-nexus-purple flex-shrink-0" />
               <div>
-                <p className="text-xs font-medium text-orbi-text">Directory (tenant) ID</p>
-                <p className="text-[10px] text-orbi-muted">Este é o <strong>Tenant ID</strong> — copie e guarde</p>
+                <p className="text-xs font-medium text-nexus-text">Directory (tenant) ID</p>
+                <p className="text-[10px] text-nexus-muted">Este é o <strong>Tenant ID</strong> — copie e guarde</p>
               </div>
             </div>
           </div>
           <InfoBox type="tip">
-            Os dois IDs ficam logo no topo da página de Overview. São GUIDs no formato <code className="bg-orbi-bg px-1 rounded border border-orbi-border">xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx</code>.
+            Os dois IDs ficam logo no topo da página de Overview. São GUIDs no formato <code className="bg-nexus-bg px-1 rounded border border-nexus-border">xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx</code>.
           </InfoBox>
         </StepCard>
 
         {/* Step 4 */}
         <StepCard step={4} title="Criar um Client Secret">
           <p>No menu lateral esquerdo do aplicativo, clique em <strong>"Certificates & secrets"</strong>.</p>
-          <div className="bg-orbi-bg rounded-lg p-4 border border-orbi-border space-y-2">
-            <p className="text-xs text-orbi-text">1. Clique em <strong>"+ New client secret"</strong></p>
-            <p className="text-xs text-orbi-text">2. Descrição: <code className="bg-white px-1 rounded border border-orbi-border">Orbi</code></p>
-            <p className="text-xs text-orbi-text">3. Validade: <strong>24 months</strong> (recomendado)</p>
-            <p className="text-xs text-orbi-text">4. Clique em <strong>"Add"</strong></p>
+          <div className="bg-nexus-bg rounded-lg p-4 border border-nexus-border space-y-2">
+            <p className="text-xs text-nexus-text">1. Clique em <strong>"+ New client secret"</strong></p>
+            <p className="text-xs text-nexus-text">2. Descrição: <code className="bg-white px-1 rounded border border-nexus-border">Nexus BI</code></p>
+            <p className="text-xs text-nexus-text">3. Validade: <strong>24 months</strong> (recomendado)</p>
+            <p className="text-xs text-nexus-text">4. Clique em <strong>"Add"</strong></p>
           </div>
           <InfoBox type="warning">
             <strong>Importante!</strong> Copie o <strong>Value</strong> (valor) do secret imediatamente. Ele só aparece uma vez — depois de sair da página, não será possível ver novamente. Este é o <strong>Client Secret</strong>.
@@ -187,29 +187,29 @@ export default function AzureSetupGuide() {
         {/* Step 5 */}
         <StepCard step={5} title="Adicionar permissões do Power BI">
           <p>No menu lateral, clique em <strong>"API permissions"</strong>.</p>
-          <div className="bg-orbi-bg rounded-lg p-4 border border-orbi-border space-y-2">
-            <p className="text-xs text-orbi-text">1. Clique em <strong>"+ Add a permission"</strong></p>
-            <p className="text-xs text-orbi-text">2. Selecione <strong>"Power BI Service"</strong> na lista</p>
-            <p className="text-xs text-orbi-text">3. Escolha <strong>"Delegated permissions"</strong></p>
-            <p className="text-xs text-orbi-text">4. Marque as seguintes permissões:</p>
+          <div className="bg-nexus-bg rounded-lg p-4 border border-nexus-border space-y-2">
+            <p className="text-xs text-nexus-text">1. Clique em <strong>"+ Add a permission"</strong></p>
+            <p className="text-xs text-nexus-text">2. Selecione <strong>"Power BI Service"</strong> na lista</p>
+            <p className="text-xs text-nexus-text">3. Escolha <strong>"Delegated permissions"</strong></p>
+            <p className="text-xs text-nexus-text">4. Marque as seguintes permissões:</p>
             <div className="ml-4 space-y-1 mt-2">
               <div className="flex items-center gap-2">
-                <CheckCircle size={12} className="text-orbi-success" />
-                <code className="text-xs bg-white px-1.5 py-0.5 rounded border border-orbi-border">Report.Read.All</code>
-                <span className="text-[10px] text-orbi-muted">— Ler todos os relatórios</span>
+                <CheckCircle size={12} className="text-nexus-success" />
+                <code className="text-xs bg-white px-1.5 py-0.5 rounded border border-nexus-border">Report.Read.All</code>
+                <span className="text-[10px] text-nexus-muted">— Ler todos os relatórios</span>
               </div>
               <div className="flex items-center gap-2">
-                <CheckCircle size={12} className="text-orbi-success" />
-                <code className="text-xs bg-white px-1.5 py-0.5 rounded border border-orbi-border">Dataset.Read.All</code>
-                <span className="text-[10px] text-orbi-muted">— Ler todos os datasets</span>
+                <CheckCircle size={12} className="text-nexus-success" />
+                <code className="text-xs bg-white px-1.5 py-0.5 rounded border border-nexus-border">Dataset.Read.All</code>
+                <span className="text-[10px] text-nexus-muted">— Ler todos os datasets</span>
               </div>
               <div className="flex items-center gap-2">
-                <CheckCircle size={12} className="text-orbi-success" />
-                <code className="text-xs bg-white px-1.5 py-0.5 rounded border border-orbi-border">Workspace.Read.All</code>
-                <span className="text-[10px] text-orbi-muted">— Listar workspaces</span>
+                <CheckCircle size={12} className="text-nexus-success" />
+                <code className="text-xs bg-white px-1.5 py-0.5 rounded border border-nexus-border">Workspace.Read.All</code>
+                <span className="text-[10px] text-nexus-muted">— Listar workspaces</span>
               </div>
             </div>
-            <p className="text-xs mt-2 text-orbi-text">5. Clique em <strong>"Add permissions"</strong></p>
+            <p className="text-xs mt-2 text-nexus-text">5. Clique em <strong>"Add permissions"</strong></p>
           </div>
           <InfoBox type="tip">
             Se você é admin do Azure AD, clique em <strong>"Grant admin consent"</strong> para aprovar as permissões automaticamente para toda a organização.
@@ -217,20 +217,20 @@ export default function AzureSetupGuide() {
         </StepCard>
 
         {/* Step 6 */}
-        <StepCard step={6} title="Colar as credenciais no Orbi">
-          <p>Volte para a página de configuração do Power BI no Orbi e preencha:</p>
-          <div className="bg-orbi-bg rounded-lg p-4 border border-orbi-border space-y-3">
+        <StepCard step={6} title="Colar as credenciais no Nexus BI">
+          <p>Volte para a página de configuração do Power BI no Nexus BI e preencha:</p>
+          <div className="bg-nexus-bg rounded-lg p-4 border border-nexus-border space-y-3">
             <div className="flex items-center gap-3">
-              <span className="text-xs font-medium w-28 text-orbi-text">Tenant ID</span>
-              <span className="text-[10px] text-orbi-muted">→ Directory (tenant) ID do passo 3</span>
+              <span className="text-xs font-medium w-28 text-nexus-text">Tenant ID</span>
+              <span className="text-[10px] text-nexus-muted">→ Directory (tenant) ID do passo 3</span>
             </div>
             <div className="flex items-center gap-3">
-              <span className="text-xs font-medium w-28 text-orbi-text">Client ID</span>
-              <span className="text-[10px] text-orbi-muted">→ Application (client) ID do passo 3</span>
+              <span className="text-xs font-medium w-28 text-nexus-text">Client ID</span>
+              <span className="text-[10px] text-nexus-muted">→ Application (client) ID do passo 3</span>
             </div>
             <div className="flex items-center gap-3">
-              <span className="text-xs font-medium w-28 text-orbi-text">Client Secret</span>
-              <span className="text-[10px] text-orbi-muted">→ Value do secret do passo 4</span>
+              <span className="text-xs font-medium w-28 text-nexus-text">Client Secret</span>
+              <span className="text-[10px] text-nexus-muted">→ Value do secret do passo 4</span>
             </div>
           </div>
           <p>Salve e clique em <strong>"Entrar com Microsoft"</strong> para conectar sua conta!</p>
@@ -243,25 +243,25 @@ export default function AzureSetupGuide() {
         </StepCard>
 
         {/* Troubleshooting */}
-        <div className="bg-white border border-orbi-border rounded-xl p-5 mt-6 shadow-card">
-          <h3 className="font-semibold mb-3 text-orbi-text">🔧 Problemas comuns</h3>
-          <div className="space-y-3 text-xs text-orbi-textSecondary">
+        <div className="bg-white border border-nexus-border rounded-xl p-5 mt-6 shadow-card">
+          <h3 className="font-semibold mb-3 text-nexus-text">🔧 Problemas comuns</h3>
+          <div className="space-y-3 text-xs text-nexus-textSecondary">
             <div>
-              <p className="font-medium text-orbi-text">Erro "AADSTS50011" ao conectar</p>
+              <p className="font-medium text-nexus-text">Erro "AADSTS50011" ao conectar</p>
               <p>A URI de redirecionamento não confere. Verifique se a URI registrada no Azure é exatamente:</p>
               <CodeBlock>{REDIRECT_URI}</CodeBlock>
             </div>
             <div>
-              <p className="font-medium text-orbi-text">Erro "insufficient privileges"</p>
+              <p className="font-medium text-nexus-text">Erro "insufficient privileges"</p>
               <p>As permissões da API não foram aprovadas. Peça ao administrador do Azure AD para clicar em "Grant admin consent" na página de API Permissions.</p>
             </div>
             <div>
-              <p className="font-medium text-orbi-text">Relatórios não aparecem / "Modo iframe"</p>
+              <p className="font-medium text-nexus-text">Relatórios não aparecem / "Modo iframe"</p>
               <p>Isso pode acontecer se a conta conectada não tem licença Power BI Pro. Com licença Free, os relatórios funcionam em modo iframe (mais limitado). Para embed completo, é necessário Pro ou Premium.</p>
             </div>
             <div>
-              <p className="font-medium text-orbi-text">Secret expirou</p>
-              <p>O Client Secret tem validade (6, 12 ou 24 meses). Quando expirar, crie um novo em "Certificates & secrets" e atualize no Orbi.</p>
+              <p className="font-medium text-nexus-text">Secret expirou</p>
+              <p>O Client Secret tem validade (6, 12 ou 24 meses). Quando expirar, crie um novo em "Certificates & secrets" e atualize no Nexus BI.</p>
             </div>
           </div>
         </div>

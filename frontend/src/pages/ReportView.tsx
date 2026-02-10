@@ -85,8 +85,8 @@ export default function ReportView() {
     return (
       <div className="flex h-full items-center justify-center">
         <div className="flex flex-col items-center gap-3 animate-fadeIn">
-          <Loader2 className="w-10 h-10 animate-spin text-orbi-purple" />
-          <p className="text-orbi-muted text-sm">Carregando relatório...</p>
+          <Loader2 className="w-10 h-10 animate-spin text-nexus-purple" />
+          <p className="text-nexus-muted text-sm">Carregando relatório...</p>
         </div>
       </div>
     );
@@ -100,22 +100,22 @@ export default function ReportView() {
       )}
 
       {/* Toolbar */}
-      <div className={`${isFullscreen ? 'absolute top-0 inset-x-0 z-50' : 'relative'} h-12 flex items-center gap-3 px-4 bg-white border-b border-orbi-border shadow-soft flex-shrink-0 transition-all duration-300 ${
+      <div className={`${isFullscreen ? 'absolute top-0 inset-x-0 z-50' : 'relative'} h-12 flex items-center gap-3 px-4 bg-white border-b border-nexus-border shadow-soft flex-shrink-0 transition-all duration-300 ${
         isFullscreen && !showToolbar ? 'opacity-0 -translate-y-full' : 'opacity-100 translate-y-0'
       }`}>
-        <button onClick={() => isFullscreen ? exitFs() : nav('/')} className="p-1.5 rounded-lg hover:bg-orbi-bg text-orbi-muted hover:text-orbi-purple transition-all">
+        <button onClick={() => isFullscreen ? exitFs() : nav('/')} className="p-1.5 rounded-lg hover:bg-nexus-bg text-nexus-muted hover:text-nexus-purple transition-all">
           <ArrowLeft size={18} />
         </button>
-        <span className="text-sm font-semibold flex-1 truncate text-orbi-text">{report.nome}</span>
+        <span className="text-sm font-semibold flex-1 truncate text-nexus-text">{report.nome}</span>
         {report.categoria && (
-          <span className="text-[10px] font-semibold px-2.5 py-1 rounded-full bg-purple-100 text-orbi-purple">{report.categoria}</span>
+          <span className="text-[10px] font-semibold px-2.5 py-1 rounded-full bg-purple-100 text-nexus-purple">{report.categoria}</span>
         )}
         {embedData?.fallback && (
           <span className="text-[10px] px-2.5 py-1 rounded-full bg-amber-100 text-amber-700 flex items-center gap-1 font-medium">
             <AlertCircle size={10} /> iframe
           </span>
         )}
-        <button onClick={isFullscreen ? exitFs : enterFs} className="p-1.5 rounded-lg hover:bg-orbi-bg text-orbi-muted hover:text-orbi-purple transition-all" title={isFullscreen ? 'Sair' : 'Tela cheia'}>
+        <button onClick={isFullscreen ? exitFs : enterFs} className="p-1.5 rounded-lg hover:bg-nexus-bg text-nexus-muted hover:text-nexus-purple transition-all" title={isFullscreen ? 'Sair' : 'Tela cheia'}>
           {isFullscreen ? <X size={18} /> : <Maximize2 size={18} />}
         </button>
       </div>

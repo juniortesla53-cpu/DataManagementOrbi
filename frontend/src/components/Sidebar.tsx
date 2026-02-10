@@ -39,20 +39,20 @@ export default function Sidebar() {
   );
 
   return (
-    <aside className={`${collapsed ? 'w-[60px]' : 'w-60'} h-screen bg-orbi-sidebar flex flex-col transition-all duration-300 flex-shrink-0`}>
+    <aside className={`${collapsed ? 'w-[60px]' : 'w-60'} h-screen bg-nexus-sidebar flex flex-col transition-all duration-300 flex-shrink-0`}>
       {/* Logo */}
       <div className={`h-16 flex items-center ${collapsed ? 'justify-center' : 'justify-between px-4'}`}>
         {!collapsed && (
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg gradient-brand flex items-center justify-center text-white font-bold text-sm">
-              O
+              N
             </div>
-            <span className="text-white font-bold text-lg tracking-tight">Orbi</span>
+            <span className="text-white font-bold text-lg tracking-tight">Nexus BI</span>
           </div>
         )}
         {collapsed && (
           <div className="w-8 h-8 rounded-lg gradient-brand flex items-center justify-center text-white font-bold text-sm">
-            O
+            N
           </div>
         )}
       </div>

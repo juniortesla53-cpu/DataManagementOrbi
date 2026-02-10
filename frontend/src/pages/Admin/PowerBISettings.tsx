@@ -33,13 +33,13 @@ export default function PowerBISettings() {
   const disconnect = async () => { if (!confirm('Desconectar?')) return; setDisconnecting(true); try { await api.post('/admin/powerbi/disconnect'); showSuccess('Desconectado'); refetch(); } catch (err: any) { showError(err.response?.data?.error || 'Erro'); } finally { setDisconnecting(false); } };
   const testConn = async () => { setTesting(true); try { const { data } = await api.get('/admin/powerbi/test'); setWorkspaces(data.workspaces || []); showSuccess(`OK! ${data.workspaces?.length || 0} workspaces`); } catch (err: any) { showError(err.response?.data?.error || 'Falha'); } finally { setTesting(false); } };
 
-  if (loading) return <div className="flex items-center justify-center min-h-[400px]"><Loader2 className="w-8 h-8 animate-spin text-orbi-purple" /></div>;
-  if (error) return <div className="flex items-center justify-center min-h-[400px]"><div className="text-center"><AlertCircle className="w-10 h-10 text-orbi-danger mx-auto mb-2" /><p className="text-orbi-muted text-sm">{error}</p></div></div>;
+  if (loading) return <div className="flex items-center justify-center min-h-[400px]"><Loader2 className="w-8 h-8 animate-spin text-nexus-purple" /></div>;
+  if (error) return <div className="flex items-center justify-center min-h-[400px]"><div className="text-center"><AlertCircle className="w-10 h-10 text-nexus-danger mx-auto mb-2" /><p className="text-nexus-muted text-sm">{error}</p></div></div>;
   if (!status) return null;
 
   return (
     <div className="p-6 max-w-2xl space-y-4 animate-fadeIn">
-      <h1 className="text-lg font-bold text-orbi-text">Power BI</h1>
+      <h1 className="text-lg font-bold text-nexus-text">Power BI</h1>
 
       {/* Connection Card */}
       <div className="card p-6">
@@ -48,15 +48,15 @@ export default function PowerBISettings() {
             <div className="flex items-center gap-3 mb-5">
               <div className="w-11 h-11 rounded-full bg-emerald-100 flex items-center justify-center"><PlugZap size={22} className="text-emerald-600" /></div>
               <div>
-                <p className="font-semibold text-orbi-text">Conectado ao Power BI</p>
-                <p className="text-xs text-orbi-muted">{status.connectedUser} — desde {new Date(status.connectedAt!).toLocaleString('pt-BR')}</p>
+                <p className="font-semibold text-nexus-text">Conectado ao Power BI</p>
+                <p className="text-xs text-nexus-muted">{status.connectedUser} — desde {new Date(status.connectedAt!).toLocaleString('pt-BR')}</p>
               </div>
             </div>
             <div className="flex gap-2">
-              <button onClick={testConn} disabled={testing} className="flex items-center gap-2 px-4 py-2 bg-blue-50 hover:bg-blue-100 text-orbi-blue rounded-lg text-xs font-semibold transition-colors disabled:opacity-50">
+              <button onClick={testConn} disabled={testing} className="flex items-center gap-2 px-4 py-2 bg-blue-50 hover:bg-blue-100 text-nexus-blue rounded-lg text-xs font-semibold transition-colors disabled:opacity-50">
                 {testing ? <Loader2 size={14} className="animate-spin" /> : <TestTube size={14} />}{testing ? 'Testando...' : 'Testar'}
               </button>
-              <button onClick={disconnect} disabled={disconnecting} className="flex items-center gap-2 px-4 py-2 bg-red-50 hover:bg-red-100 text-orbi-danger rounded-lg text-xs font-semibold transition-colors disabled:opacity-50">
+              <button onClick={disconnect} disabled={disconnecting} className="flex items-center gap-2 px-4 py-2 bg-red-50 hover:bg-red-100 text-nexus-danger rounded-lg text-xs font-semibold transition-colors disabled:opacity-50">
                 {disconnecting ? <Loader2 size={14} className="animate-spin" /> : <Unplug size={14} />}{disconnecting ? '...' : 'Desconectar'}
               </button>
             </div>
@@ -66,8 +66,8 @@ export default function PowerBISettings() {
             <div className="w-14 h-14 rounded-2xl gradient-brand flex items-center justify-center mx-auto mb-4 shadow-glow">
               <PlugZap size={24} className="text-white" />
             </div>
-            <h2 className="font-bold text-orbi-text mb-1">Conecte sua conta Microsoft</h2>
-            <p className="text-xs text-orbi-muted mb-6 max-w-sm mx-auto">Faça login com sua conta que tem acesso ao Power BI.<br />Funciona com Pro e Free.</p>
+            <h2 className="font-bold text-nexus-text mb-1">Conecte sua conta Microsoft</h2>
+            <p className="text-xs text-nexus-muted mb-6 max-w-sm mx-auto">Faça login com sua conta que tem acesso ao Power BI.<br />Funciona com Pro e Free.</p>
             {status.configured ? (
               <button onClick={connect} disabled={connecting} className="inline-flex items-center gap-2 px-6 py-2.5 btn-gradient rounded-lg text-sm font-semibold disabled:opacity-50">
                 {connecting ? <Loader2 size={16} className="animate-spin" /> : <LogIn size={16} />}{connecting ? 'Redirecionando...' : 'Entrar com Microsoft'}
@@ -82,35 +82,35 @@ export default function PowerBISettings() {
       {/* Workspaces */}
       {workspaces.length > 0 && (
         <div className="card p-5">
-          <h3 className="text-sm font-semibold text-orbi-text mb-2">Workspaces</h3>
-          <div className="space-y-1">{workspaces.map((w: any) => (<div key={w.id} className="text-xs text-orbi-textSecondary px-3 py-2 bg-orbi-bg rounded-lg">{w.name} <span className="text-orbi-muted text-[10px]">({w.id})</span></div>))}</div>
+          <h3 className="text-sm font-semibold text-nexus-text mb-2">Workspaces</h3>
+          <div className="space-y-1">{workspaces.map((w: any) => (<div key={w.id} className="text-xs text-nexus-textSecondary px-3 py-2 bg-nexus-bg rounded-lg">{w.name} <span className="text-nexus-muted text-[10px]">({w.id})</span></div>))}</div>
         </div>
       )}
 
       {/* Advanced */}
       <div className="card overflow-hidden">
-        <button onClick={() => setShowAdvanced(!showAdvanced)} className="w-full flex items-center justify-between p-4 hover:bg-orbi-bg transition-colors">
+        <button onClick={() => setShowAdvanced(!showAdvanced)} className="w-full flex items-center justify-between p-4 hover:bg-nexus-bg transition-colors">
           <div className="flex items-center gap-2">
-            <Settings2 size={16} className="text-orbi-muted" />
-            <span className="text-sm font-medium text-orbi-textSecondary">Configurações avançadas</span>
+            <Settings2 size={16} className="text-nexus-muted" />
+            <span className="text-sm font-medium text-nexus-textSecondary">Configurações avançadas</span>
             {status.configured && <CheckCircle size={14} className="text-emerald-500" />}
           </div>
-          {showAdvanced ? <ChevronUp size={16} className="text-orbi-muted" /> : <ChevronDown size={16} className="text-orbi-muted" />}
+          {showAdvanced ? <ChevronUp size={16} className="text-nexus-muted" /> : <ChevronDown size={16} className="text-nexus-muted" />}
         </button>
         {showAdvanced && (
-          <div className="px-4 pb-4 border-t border-orbi-border pt-4 space-y-3">
-            <p className="text-[11px] text-orbi-muted">Credenciais do app registrado no Azure AD.</p>
+          <div className="px-4 pb-4 border-t border-nexus-border pt-4 space-y-3">
+            <p className="text-[11px] text-nexus-muted">Credenciais do app registrado no Azure AD.</p>
             {(['tenantId', 'clientId', 'clientSecret'] as const).map(f => (
               <div key={f}>
-                <label className="block text-[10px] text-orbi-muted mb-1 font-semibold uppercase">{f === 'tenantId' ? 'Tenant ID' : f === 'clientId' ? 'Client ID' : 'Client Secret'}</label>
+                <label className="block text-[10px] text-nexus-muted mb-1 font-semibold uppercase">{f === 'tenantId' ? 'Tenant ID' : f === 'clientId' ? 'Client ID' : 'Client Secret'}</label>
                 <input type={f === 'clientSecret' ? 'password' : 'text'} value={form[f]} onChange={e => setForm({...form, [f]: e.target.value})} placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-                  className="w-full px-3 py-2 bg-orbi-bg border border-orbi-border rounded-lg text-xs transition-all" />
+                  className="w-full px-3 py-2 bg-nexus-bg border border-nexus-border rounded-lg text-xs transition-all" />
               </div>
             ))}
             <button onClick={saveConfig} disabled={saving} className="w-full py-2.5 btn-gradient rounded-lg text-sm font-semibold disabled:opacity-50 flex items-center justify-center gap-2">
               {saving && <Loader2 size={14} className="animate-spin" />}{saving ? 'Salvando...' : 'Salvar Credenciais'}
             </button>
-            <button onClick={() => nav('/admin/powerbi/setup-guide')} className="flex items-center gap-2 text-xs text-orbi-purple hover:text-orbi-purpleDark transition-colors">
+            <button onClick={() => nav('/admin/powerbi/setup-guide')} className="flex items-center gap-2 text-xs text-nexus-purple hover:text-nexus-purpleDark transition-colors">
               <BookOpen size={14} />Como obter essas credenciais?
             </button>
           </div>

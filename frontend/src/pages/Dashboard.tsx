@@ -35,8 +35,8 @@ export default function Dashboard() {
     return (
       <div className="flex items-center justify-center min-h-[500px]">
         <div className="flex flex-col items-center gap-3 animate-fadeIn">
-          <Loader2 className="w-10 h-10 animate-spin text-orbi-purple" />
-          <p className="text-orbi-muted text-sm">Carregando relatórios...</p>
+          <Loader2 className="w-10 h-10 animate-spin text-nexus-purple" />
+          <p className="text-nexus-muted text-sm">Carregando relatórios...</p>
         </div>
       </div>
     );
@@ -47,10 +47,10 @@ export default function Dashboard() {
       <div className="flex items-center justify-center min-h-[500px]">
         <div className="card p-10 text-center max-w-md animate-scaleIn">
           <div className="w-14 h-14 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-4">
-            <AlertCircle className="w-7 h-7 text-orbi-danger" />
+            <AlertCircle className="w-7 h-7 text-nexus-danger" />
           </div>
-          <h3 className="text-lg font-bold text-orbi-text mb-2">Erro ao carregar</h3>
-          <p className="text-orbi-muted text-sm">{error}</p>
+          <h3 className="text-lg font-bold text-nexus-text mb-2">Erro ao carregar</h3>
+          <p className="text-nexus-muted text-sm">{error}</p>
         </div>
       </div>
     );
@@ -69,20 +69,20 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="card p-4 flex items-center gap-4">
           <div className="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center flex-shrink-0">
-            <BarChart3 size={20} className="text-orbi-purple" />
+            <BarChart3 size={20} className="text-nexus-purple" />
           </div>
           <div>
-            <p className="text-xl font-bold text-orbi-text">{reports?.length || 0}</p>
-            <p className="text-xs text-orbi-muted">Relatórios</p>
+            <p className="text-xl font-bold text-nexus-text">{reports?.length || 0}</p>
+            <p className="text-xs text-nexus-muted">Relatórios</p>
           </div>
         </div>
         <div className="card p-4 flex items-center gap-4">
           <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
-            <FolderOpen size={20} className="text-orbi-blue" />
+            <FolderOpen size={20} className="text-nexus-blue" />
           </div>
           <div>
-            <p className="text-xl font-bold text-orbi-text">{categories.length}</p>
-            <p className="text-xs text-orbi-muted">Categorias</p>
+            <p className="text-xl font-bold text-nexus-text">{categories.length}</p>
+            <p className="text-xs text-nexus-muted">Categorias</p>
           </div>
         </div>
         <div className="card p-4 flex items-center gap-4">
@@ -90,8 +90,8 @@ export default function Dashboard() {
             <FileBarChart size={20} className="text-emerald-600" />
           </div>
           <div>
-            <p className="text-xl font-bold text-orbi-text">{filtered.length}</p>
-            <p className="text-xs text-orbi-muted">Visíveis</p>
+            <p className="text-xl font-bold text-nexus-text">{filtered.length}</p>
+            <p className="text-xs text-nexus-muted">Visíveis</p>
           </div>
         </div>
       </div>
@@ -102,7 +102,7 @@ export default function Dashboard() {
         <select
           value={catFilter}
           onChange={(e) => setCatFilter(e.target.value)}
-          className="px-4 py-2.5 bg-white border border-orbi-border rounded-xl text-sm transition-all"
+          className="px-4 py-2.5 bg-white border border-nexus-border rounded-xl text-sm transition-all"
         >
           <option value="">Todas categorias</option>
           {categories.map(c => <option key={c} value={c}>{c}</option>)}
@@ -113,12 +113,12 @@ export default function Dashboard() {
       {filtered.length === 0 ? (
         <div className="card p-12 text-center">
           <div className="w-16 h-16 rounded-full bg-purple-50 flex items-center justify-center mx-auto mb-4">
-            <FileBarChart className="w-8 h-8 text-orbi-purple" />
+            <FileBarChart className="w-8 h-8 text-nexus-purple" />
           </div>
-          <h3 className="text-base font-semibold text-orbi-text mb-1">
+          <h3 className="text-base font-semibold text-nexus-text mb-1">
             {search || catFilter ? 'Nenhum relatório encontrado' : 'Nenhum relatório disponível'}
           </h3>
-          <p className="text-sm text-orbi-muted">
+          <p className="text-sm text-nexus-muted">
             {search || catFilter ? 'Tente ajustar os filtros' : 'Relatórios aparecerão aqui quando adicionados'}
           </p>
         </div>

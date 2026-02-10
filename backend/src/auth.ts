@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { JwtPayload } from './types';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'orbi-secret-key-change-in-production';
+const JWT_SECRET = process.env.JWT_SECRET || 'nexus-secret-key-change-in-production';
 
 export function generateToken(payload: JwtPayload): string {
   return jwt.sign(payload, JWT_SECRET, { expiresIn: '8h' });

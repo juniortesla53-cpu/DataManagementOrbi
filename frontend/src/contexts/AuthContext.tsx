@@ -24,21 +24,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const stored = localStorage.getItem('orbi_user');
+    const stored = localStorage.getItem('nexus_user');
     if (stored) setUser(JSON.parse(stored));
     setLoading(false);
   }, []);
 
   const login = async (loginRede: string, senha: string) => {
     const { data } = await api.post('/auth/login', { login: loginRede, senha });
-    localStorage.setItem('orbi_token', data.token);
-    localStorage.setItem('orbi_user', JSON.stringify(data.user));
+    localStorage.setItem('nexus_token', data.token);
+    localStorage.setItem('nexus_user', JSON.stringify(data.user));
     setUser(data.user);
   };
 
   const logout = () => {
-    localStorage.removeItem('orbi_token');
-    localStorage.removeItem('orbi_user');
+    localStorage.removeItem('nexus_token');
+    localStorage.removeItem('nexus_user');
     setUser(null);
   };
 

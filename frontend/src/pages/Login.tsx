@@ -35,9 +35,9 @@ export default function Login() {
         {/* Brand */}
         <div className="text-center mb-10">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-white/10 backdrop-blur border border-white/20 mb-4 shadow-glow">
-            <span className="text-3xl font-bold text-white">O</span>
+            <span className="text-3xl font-bold text-white">N</span>
           </div>
-          <h1 className="text-3xl font-bold text-white tracking-tight">Orbi</h1>
+          <h1 className="text-3xl font-bold text-white tracking-tight">Nexus BI</h1>
           <p className="text-white/60 text-sm mt-1">Data Management Platform</p>
         </div>
 
@@ -50,24 +50,24 @@ export default function Login() {
           )}
 
           <div className="mb-5">
-            <label className="block text-sm font-medium text-orbi-text mb-1.5">Login de rede</label>
+            <label className="block text-sm font-medium text-nexus-text mb-1.5">Login de rede</label>
             <input
               type="text"
               value={login}
               onChange={(e) => setLogin(e.target.value)}
-              className="w-full px-4 py-3 bg-orbi-bg border border-orbi-border rounded-xl text-sm placeholder:text-orbi-muted transition-all"
+              className="w-full px-4 py-3 bg-nexus-bg border border-nexus-border rounded-xl text-sm placeholder:text-nexus-muted transition-all"
               placeholder="seu.login"
               autoFocus
             />
           </div>
 
           <div className="mb-6">
-            <label className="block text-sm font-medium text-orbi-text mb-1.5">Senha</label>
+            <label className="block text-sm font-medium text-nexus-text mb-1.5">Senha</label>
             <input
               type="password"
               value={senha}
               onChange={(e) => setSenha(e.target.value)}
-              className="w-full px-4 py-3 bg-orbi-bg border border-orbi-border rounded-xl text-sm placeholder:text-orbi-muted transition-all"
+              className="w-full px-4 py-3 bg-nexus-bg border border-nexus-border rounded-xl text-sm placeholder:text-nexus-muted transition-all"
               placeholder="••••••••"
             />
           </div>

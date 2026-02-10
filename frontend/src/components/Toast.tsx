@@ -24,8 +24,8 @@ export default function Toast({ type, message, onClose, duration = 4000 }: Toast
         ? <CheckCircle size={18} className="text-emerald-500 flex-shrink-0" />
         : <AlertCircle size={18} className="text-red-500 flex-shrink-0" />
       }
-      <p className="flex-1 text-sm text-orbi-text font-medium">{message}</p>
-      <button onClick={onClose} className="text-orbi-muted hover:text-orbi-text transition-colors flex-shrink-0"><X size={14} /></button>
+      <p className="flex-1 text-sm text-nexus-text font-medium">{message}</p>
+      <button onClick={onClose} className="text-nexus-muted hover:text-nexus-text transition-colors flex-shrink-0"><X size={14} /></button>
     </div>
   );
 }

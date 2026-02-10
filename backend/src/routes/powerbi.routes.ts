@@ -8,7 +8,7 @@ import { authMiddleware, adminMiddleware } from '../auth';
 const router = Router();
 router.use(authMiddleware, adminMiddleware);
 
-const ENCRYPT_KEY = process.env.ENCRYPT_KEY || 'orbi-encrypt-key-change-in-prod!'; // 32 chars
+const ENCRYPT_KEY = process.env.ENCRYPT_KEY || 'nexus-encrypt-key-change-in-prod!'; // 32 chars
 const POWERBI_API = 'https://api.powerbi.com/v1.0/myorg';
 
 function encrypt(text: string): string {

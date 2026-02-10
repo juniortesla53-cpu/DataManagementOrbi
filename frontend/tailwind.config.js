@@ -4,7 +4,7 @@ export default {
   theme: {
     extend: {
       colors: {
-        orbi: {
+        nexus: {
           // Sidebar (dark)
           sidebar: '#0f0b2e',
           sidebarLight: '#1a1445',

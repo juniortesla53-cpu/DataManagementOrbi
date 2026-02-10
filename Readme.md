@@ -1,4 +1,4 @@
-# ⬡ Data Management Orbi
+# ⬡ Nexus BI
 
 Hub centralizado para relatórios Power BI com controle de acesso.
 

@@ -39,13 +39,13 @@ export default function ManageUsers() {
     catch (err: any) { showError(err.response?.data?.error || 'Erro'); }
   };
 
-  if (loading) return <div className="flex items-center justify-center min-h-[400px]"><Loader2 className="w-8 h-8 animate-spin text-orbi-purple" /></div>;
-  if (error) return <div className="flex items-center justify-center min-h-[400px]"><div className="text-center"><AlertCircle className="w-10 h-10 text-orbi-danger mx-auto mb-2" /><p className="text-orbi-muted text-sm">{error}</p></div></div>;
+  if (loading) return <div className="flex items-center justify-center min-h-[400px]"><Loader2 className="w-8 h-8 animate-spin text-nexus-purple" /></div>;
+  if (error) return <div className="flex items-center justify-center min-h-[400px]"><div className="text-center"><AlertCircle className="w-10 h-10 text-nexus-danger mx-auto mb-2" /><p className="text-nexus-muted text-sm">{error}</p></div></div>;
 
   return (
     <div className="p-6 space-y-5 animate-fadeIn">
       <div className="flex items-center justify-between">
-        <h1 className="text-lg font-bold text-orbi-text">Usuários</h1>
+        <h1 className="text-lg font-bold text-nexus-text">Usuários</h1>
         <button onClick={openNew} className="flex items-center gap-2 px-4 py-2 btn-gradient rounded-lg text-xs font-semibold"><Plus size={14} /> Novo</button>
       </div>
 
@@ -54,7 +54,7 @@ export default function ManageUsers() {
       <div className="card overflow-hidden">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-orbi-border bg-orbi-bg text-orbi-muted text-xs">
+            <tr className="border-b border-nexus-border bg-nexus-bg text-nexus-muted text-xs">
               <th className="text-left p-3 font-semibold">Nome</th>
               <th className="text-left p-3 font-semibold">Login</th>
               <th className="text-left p-3 font-semibold">Cargo</th>
@@ -65,15 +65,15 @@ export default function ManageUsers() {
           </thead>
           <tbody>
             {filtered.map(u => (
-              <tr key={u.id} className="border-b border-orbi-borderLight hover:bg-orbi-bg/50 transition-colors">
-                <td className="p-3 font-medium text-orbi-text">{u.nome_completo}</td>
-                <td className="p-3 text-orbi-textSecondary">{u.login_rede}</td>
-                <td className="p-3 text-orbi-textSecondary">{u.cargo || '—'}</td>
+              <tr key={u.id} className="border-b border-nexus-borderLight hover:bg-nexus-bg/50 transition-colors">
+                <td className="p-3 font-medium text-nexus-text">{u.nome_completo}</td>
+                <td className="p-3 text-nexus-textSecondary">{u.login_rede}</td>
+                <td className="p-3 text-nexus-textSecondary">{u.cargo || '—'}</td>
                 <td className="p-3"><span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${u.role === 'admin' ? 'bg-purple-100 text-purple-700' : 'bg-slate-100 text-slate-600'}`}>{u.role}</span></td>
                 <td className="p-3"><span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${u.ativo ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-600'}`}>{u.ativo ? 'Ativo' : 'Inativo'}</span></td>
                 <td className="p-3 text-right space-x-1">
-                  <button onClick={() => openEdit(u)} className="p-1 text-orbi-muted hover:text-orbi-purple transition-colors"><Edit2 size={14} /></button>
-                  <button onClick={() => remove(u.id)} className="p-1 text-orbi-muted hover:text-orbi-danger transition-colors"><Trash2 size={14} /></button>
+                  <button onClick={() => openEdit(u)} className="p-1 text-nexus-muted hover:text-nexus-purple transition-colors"><Edit2 size={14} /></button>
+                  <button onClick={() => remove(u.id)} className="p-1 text-nexus-muted hover:text-nexus-danger transition-colors"><Trash2 size={14} /></button>
                 </td>
               </tr>
             ))}
@@ -86,22 +86,22 @@ export default function ManageUsers() {
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setModal(null)}>
           <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-modal animate-scaleIn" onClick={e => e.stopPropagation()}>
             <div className="flex justify-between items-center mb-5">
-              <h2 className="font-bold text-orbi-text">{modal === 'new' ? 'Novo Usuário' : 'Editar Usuário'}</h2>
-              <button onClick={() => setModal(null)} className="text-orbi-muted hover:text-orbi-text"><X size={18} /></button>
+              <h2 className="font-bold text-nexus-text">{modal === 'new' ? 'Novo Usuário' : 'Editar Usuário'}</h2>
+              <button onClick={() => setModal(null)} className="text-nexus-muted hover:text-nexus-text"><X size={18} /></button>
             </div>
             <div className="grid grid-cols-2 gap-3">
               {(['nome_completo', 'login_rede', 'matricula', 'cargo', 'cpf', 'site', 'senha'] as const).map(f => (
                 <div key={f} className={f === 'nome_completo' ? 'col-span-2' : ''}>
-                  <label className="block text-[10px] text-orbi-muted mb-1 font-semibold uppercase">
+                  <label className="block text-[10px] text-nexus-muted mb-1 font-semibold uppercase">
                     {f.replace('_', ' ')}{f === 'senha' && modal !== 'new' ? ' (vazio = manter)' : ''}
                   </label>
                   <input type={f === 'senha' ? 'password' : 'text'} value={(form as any)[f]} onChange={e => setForm({...form, [f]: e.target.value})}
-                    className="w-full px-3 py-2 bg-orbi-bg border border-orbi-border rounded-lg text-xs transition-all" />
+                    className="w-full px-3 py-2 bg-nexus-bg border border-nexus-border rounded-lg text-xs transition-all" />
                 </div>
               ))}
               <div>
-                <label className="block text-[10px] text-orbi-muted mb-1 font-semibold uppercase">Role</label>
-                <select value={form.role} onChange={e => setForm({...form, role: e.target.value})} className="w-full px-3 py-2 bg-orbi-bg border border-orbi-border rounded-lg text-xs">
+                <label className="block text-[10px] text-nexus-muted mb-1 font-semibold uppercase">Role</label>
+                <select value={form.role} onChange={e => setForm({...form, role: e.target.value})} className="w-full px-3 py-2 bg-nexus-bg border border-nexus-border rounded-lg text-xs">
                   <option value="user">Usuário</option>
                   <option value="admin">Admin</option>
                 </select>

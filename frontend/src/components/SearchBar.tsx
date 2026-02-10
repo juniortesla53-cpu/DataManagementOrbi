@@ -9,13 +9,13 @@ interface Props {
 export default function SearchBar({ value, onChange, placeholder = 'Buscar relatórios...' }: Props) {
   return (
     <div className="relative group">
-      <Search size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-orbi-muted group-focus-within:text-orbi-purple transition-colors" />
+      <Search size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-nexus-muted group-focus-within:text-nexus-purple transition-colors" />
       <input
         type="text"
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full pl-11 pr-4 py-2.5 bg-white border border-orbi-border rounded-xl text-sm placeholder:text-orbi-muted transition-all"
+        className="w-full pl-11 pr-4 py-2.5 bg-white border border-nexus-border rounded-xl text-sm placeholder:text-nexus-muted transition-all"
       />
     </div>
   );

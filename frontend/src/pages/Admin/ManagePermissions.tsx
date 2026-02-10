@@ -36,20 +36,20 @@ export default function ManagePermissions() {
     catch (err: any) { showError(err.response?.data?.error || 'Erro'); }
   };
 
-  if (loading || loadingLists) return <div className="flex items-center justify-center min-h-[400px]"><Loader2 className="w-8 h-8 animate-spin text-orbi-purple" /></div>;
-  if (error) return <div className="flex items-center justify-center min-h-[400px]"><div className="text-center"><AlertCircle className="w-10 h-10 text-orbi-danger mx-auto mb-2" /><p className="text-orbi-muted text-sm">{error}</p></div></div>;
+  if (loading || loadingLists) return <div className="flex items-center justify-center min-h-[400px]"><Loader2 className="w-8 h-8 animate-spin text-nexus-purple" /></div>;
+  if (error) return <div className="flex items-center justify-center min-h-[400px]"><div className="text-center"><AlertCircle className="w-10 h-10 text-nexus-danger mx-auto mb-2" /><p className="text-nexus-muted text-sm">{error}</p></div></div>;
 
   return (
     <div className="p-6 space-y-5 animate-fadeIn">
       <div className="flex items-center justify-between">
-        <h1 className="text-lg font-bold text-orbi-text">Permissões</h1>
+        <h1 className="text-lg font-bold text-nexus-text">Permissões</h1>
         <button onClick={() => { setSelUser(''); setSelReport(''); setModal(true); }} className="flex items-center gap-2 px-4 py-2 btn-gradient rounded-lg text-xs font-semibold"><Plus size={14} /> Nova</button>
       </div>
 
       <div className="card overflow-hidden">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-orbi-border bg-orbi-bg text-orbi-muted text-xs">
+            <tr className="border-b border-nexus-border bg-nexus-bg text-nexus-muted text-xs">
               <th className="text-left p-3 font-semibold">Usuário</th>
               <th className="text-left p-3 font-semibold">Login</th>
               <th className="text-left p-3 font-semibold">Relatório</th>
@@ -58,14 +58,14 @@ export default function ManagePermissions() {
           </thead>
           <tbody>
             {(perms || []).map(p => (
-              <tr key={p.id} className="border-b border-orbi-borderLight hover:bg-orbi-bg/50 transition-colors">
-                <td className="p-3 font-medium text-orbi-text">{p.user_nome}</td>
-                <td className="p-3 text-orbi-textSecondary">{p.login_rede}</td>
-                <td className="p-3 text-orbi-text">{p.report_nome}</td>
-                <td className="p-3 text-right"><button onClick={() => revoke(p.id)} className="p-1 text-orbi-muted hover:text-orbi-danger transition-colors"><Trash2 size={14} /></button></td>
+              <tr key={p.id} className="border-b border-nexus-borderLight hover:bg-nexus-bg/50 transition-colors">
+                <td className="p-3 font-medium text-nexus-text">{p.user_nome}</td>
+                <td className="p-3 text-nexus-textSecondary">{p.login_rede}</td>
+                <td className="p-3 text-nexus-text">{p.report_nome}</td>
+                <td className="p-3 text-right"><button onClick={() => revoke(p.id)} className="p-1 text-nexus-muted hover:text-nexus-danger transition-colors"><Trash2 size={14} /></button></td>
               </tr>
             ))}
-            {(!perms || perms.length === 0) && <tr><td colSpan={4} className="p-8 text-center text-orbi-muted">Nenhuma permissão cadastrada</td></tr>}
+            {(!perms || perms.length === 0) && <tr><td colSpan={4} className="p-8 text-center text-nexus-muted">Nenhuma permissão cadastrada</td></tr>}
           </tbody>
         </table>
       </div>
@@ -74,20 +74,20 @@ export default function ManagePermissions() {
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setModal(false)}>
           <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-modal animate-scaleIn" onClick={e => e.stopPropagation()}>
             <div className="flex justify-between items-center mb-5">
-              <h2 className="font-bold text-orbi-text">Nova Permissão</h2>
-              <button onClick={() => setModal(false)} className="text-orbi-muted hover:text-orbi-text"><X size={18} /></button>
+              <h2 className="font-bold text-nexus-text">Nova Permissão</h2>
+              <button onClick={() => setModal(false)} className="text-nexus-muted hover:text-nexus-text"><X size={18} /></button>
             </div>
             <div className="space-y-3">
               <div>
-                <label className="block text-[10px] text-orbi-muted mb-1 font-semibold uppercase">Usuário</label>
-                <select value={selUser} onChange={e => setSelUser(e.target.value)} className="w-full px-3 py-2 bg-orbi-bg border border-orbi-border rounded-lg text-xs">
+                <label className="block text-[10px] text-nexus-muted mb-1 font-semibold uppercase">Usuário</label>
+                <select value={selUser} onChange={e => setSelUser(e.target.value)} className="w-full px-3 py-2 bg-nexus-bg border border-nexus-border rounded-lg text-xs">
                   <option value="">Selecione...</option>
                   {users.map(u => <option key={u.id} value={u.id}>{u.nome_completo}</option>)}
                 </select>
               </div>
               <div>
-                <label className="block text-[10px] text-orbi-muted mb-1 font-semibold uppercase">Relatório</label>
-                <select value={selReport} onChange={e => setSelReport(e.target.value)} className="w-full px-3 py-2 bg-orbi-bg border border-orbi-border rounded-lg text-xs">
+                <label className="block text-[10px] text-nexus-muted mb-1 font-semibold uppercase">Relatório</label>
+                <select value={selReport} onChange={e => setSelReport(e.target.value)} className="w-full px-3 py-2 bg-nexus-bg border border-nexus-border rounded-lg text-xs">
                   <option value="">Selecione...</option>
                   {reports.map(r => <option key={r.id} value={r.id}>{r.nome}</option>)}
                 </select>
