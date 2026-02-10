@@ -9,6 +9,7 @@ import ManageUsers from './pages/Admin/ManageUsers';
 import ManageReports from './pages/Admin/ManageReports';
 import ManagePermissions from './pages/Admin/ManagePermissions';
 import PowerBISettings from './pages/Admin/PowerBISettings';
+import AzureSetupGuide from './pages/Admin/AzureSetupGuide';
 
 function AppLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -32,6 +33,7 @@ export default function App() {
       <Route path="/admin/reports" element={<ProtectedRoute adminOnly><AppLayout><ManageReports /></AppLayout></ProtectedRoute>} />
       <Route path="/admin/permissions" element={<ProtectedRoute adminOnly><AppLayout><ManagePermissions /></AppLayout></ProtectedRoute>} />
       <Route path="/admin/powerbi" element={<ProtectedRoute adminOnly><AppLayout><PowerBISettings /></AppLayout></ProtectedRoute>} />
+      <Route path="/admin/powerbi/setup-guide" element={<ProtectedRoute adminOnly><AppLayout><AzureSetupGuide /></AppLayout></ProtectedRoute>} />
       <Route path="*" element={<Navigate to="/" />} />
     </Routes>
   );
