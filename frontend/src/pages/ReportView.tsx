@@ -120,14 +120,14 @@ export default function ReportView() {
         </button>
       </div>
 
-      <div className="flex-1 w-full relative bg-white">
+      <div className="flex-1 min-h-0 w-full relative bg-white overflow-hidden">
         {embedData?.fallback ? (
           <iframe
             src={(() => { const u = new URL(report.link_powerbi); u.searchParams.set('filterPaneEnabled','false'); u.searchParams.set('navContentPaneEnabled','false'); u.searchParams.set('chromeless','1'); return u.toString(); })()}
-            className="w-full h-full border-0" title={report.nome} allowFullScreen
+            className="absolute top-0 left-0 w-full border-0" style={{ height: 'calc(100% + 56px)' }} title={report.nome} allowFullScreen
           />
         ) : (
-          <div ref={embedRef} className="w-full h-full" />
+          <div ref={embedRef} className="absolute inset-0 w-full h-full" />
         )}
       </div>
     </div>

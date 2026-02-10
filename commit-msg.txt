@@ -1,0 +1,6 @@
+v1.2.2 - Fix iframe Power BI + layout
+
+- Fix: iframe do relatorio agora preenche 100% da area disponivel
+- Fix: barra de navegacao nativa do Power BI escondida via overflow-hidden + iframe oversized
+- Fix: main do AppLayout com h-full para propagar height corretamente
+- Adicionado min-h-0 no container flex do iframe
