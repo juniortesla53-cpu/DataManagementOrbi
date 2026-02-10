@@ -1,8 +1,0 @@
-v1.2.1 - Logo Nexus BI + fix sidebar
-
-- Logo SVG criativa: "N" formado por nodes interligados (inspiracao Claude/Codex)
-- Componente NexusLogo.tsx reutilizavel (Sidebar + Login)
-- Favicon SVG com a mesma identidade visual
-- Sidebar: logo integrada substituindo letra estatica
-- Login: logo com drop-shadow no fundo animado
-- .gitignore: adicionado *.db-shm e *.db-wal
