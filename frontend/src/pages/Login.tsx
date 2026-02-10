@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Loader2 } from 'lucide-react';
+import NexusLogo from '../components/NexusLogo';
 
 export default function Login() {
   const [login, setLogin] = useState('');
@@ -34,8 +35,8 @@ export default function Login() {
       <div className="w-full max-w-md px-6 relative z-10 animate-fadeIn">
         {/* Brand */}
         <div className="text-center mb-10">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-white/10 backdrop-blur border border-white/20 mb-4 shadow-glow">
-            <span className="text-3xl font-bold text-white">N</span>
+          <div className="inline-flex items-center justify-center mb-4">
+            <NexusLogo size={72} className="drop-shadow-lg" />
           </div>
           <h1 className="text-3xl font-bold text-white tracking-tight">Nexus BI</h1>
           <p className="text-white/60 text-sm mt-1">Data Management Platform</p>

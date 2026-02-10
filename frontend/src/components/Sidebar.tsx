@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { LayoutDashboard, FileBarChart, Users, Shield, Plug, LogOut, ChevronLeft, ChevronRight } from 'lucide-react';
+import NexusLogo from './NexusLogo';
 
 export default function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
@@ -43,17 +44,13 @@ export default function Sidebar() {
       {/* Logo */}
       <div className={`h-16 flex items-center ${collapsed ? 'justify-center' : 'justify-between px-4'}`}>
         {!collapsed && (
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg gradient-brand flex items-center justify-center text-white font-bold text-sm">
-              N
-            </div>
+          <div className="flex items-center gap-2.5">
+            <NexusLogo size={32} />
             <span className="text-white font-bold text-lg tracking-tight">Nexus BI</span>
           </div>
         )}
         {collapsed && (
-          <div className="w-8 h-8 rounded-lg gradient-brand flex items-center justify-center text-white font-bold text-sm">
-            N
-          </div>
+          <NexusLogo size={32} />
         )}
       </div>
 

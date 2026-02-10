@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <defs>
+    <linearGradient id="brand" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#7c3aed"/>
+      <stop offset="100%" stop-color="#3b82f6"/>
+    </linearGradient>
+    <linearGradient id="glow" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#a78bfa" stop-opacity="0.6"/>
+      <stop offset="100%" stop-color="#60a5fa" stop-opacity="0.6"/>
+    </linearGradient>
+  </defs>
+  <!-- Background rounded square -->
+  <rect x="16" y="16" width="480" height="480" rx="96" fill="url(#brand)"/>
+  <!-- Subtle inner glow -->
+  <rect x="16" y="16" width="480" height="480" rx="96" fill="url(#glow)" opacity="0.15"/>
+  <!-- N shape formed by 3 connected nodes with lines -->
+  <!-- Left vertical line -->
+  <line x1="152" y1="144" x2="152" y2="368" stroke="white" stroke-width="36" stroke-linecap="round"/>
+  <!-- Right vertical line -->
+  <line x1="360" y1="144" x2="360" y2="368" stroke="white" stroke-width="36" stroke-linecap="round"/>
+  <!-- Diagonal connector -->
+  <line x1="152" y1="152" x2="360" y2="360" stroke="white" stroke-width="32" stroke-linecap="round" opacity="0.9"/>
+  <!-- Node dots (connection points) -->
+  <circle cx="152" cy="144" r="24" fill="white"/>
+  <circle cx="152" cy="368" r="24" fill="white"/>
+  <circle cx="360" cy="144" r="24" fill="white"/>
+  <circle cx="360" cy="368" r="24" fill="white"/>
+  <!-- Center nexus dot (intersection accent) -->
+  <circle cx="256" cy="256" r="16" fill="white" opacity="0.7"/>
+</svg>
