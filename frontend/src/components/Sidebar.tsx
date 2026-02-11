@@ -22,10 +22,7 @@ export default function Sidebar() {
 
   const rvItems = isAdmin ? [
     { to: '/rv', icon: Calculator, label: 'RV Dashboard' },
-    { to: '/rv/indicadores', icon: Target, label: 'Indicadores' },
-    { to: '/rv/regras', icon: Settings2, label: 'Regras' },
-    { to: '/rv/calcular', icon: Play, label: 'Calcular' },
-    { to: '/rv/resultados', icon: ListChecks, label: 'Resultados' },
+    { to: '/rv/calcular', icon: Play, label: 'Plano de Cálculo' },
   ] : [];
 
   const isActive = (path: string) => loc.pathname === path;

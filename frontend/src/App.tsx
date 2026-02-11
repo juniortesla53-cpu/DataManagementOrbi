@@ -11,10 +11,7 @@ import ManagePermissions from './pages/Admin/ManagePermissions';
 import PowerBISettings from './pages/Admin/PowerBISettings';
 import AzureSetupGuide from './pages/Admin/AzureSetupGuide';
 import RVDashboard from './pages/RV/RVDashboard';
-import RVIndicadores from './pages/RV/RVIndicadores';
-import RVRegras from './pages/RV/RVRegras';
 import RVCalcular from './pages/RV/RVCalcular';
-import RVResultados from './pages/RV/RVResultados';
 
 function AppLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -41,10 +38,11 @@ export default function App() {
       <Route path="/admin/powerbi/setup-guide" element={<ProtectedRoute adminOnly><AppLayout><AzureSetupGuide /></AppLayout></ProtectedRoute>} />
       {/* Nexus RV */}
       <Route path="/rv" element={<ProtectedRoute adminOnly><AppLayout><RVDashboard /></AppLayout></ProtectedRoute>} />
-      <Route path="/rv/indicadores" element={<ProtectedRoute adminOnly><AppLayout><RVIndicadores /></AppLayout></ProtectedRoute>} />
-      <Route path="/rv/regras" element={<ProtectedRoute adminOnly><AppLayout><RVRegras /></AppLayout></ProtectedRoute>} />
       <Route path="/rv/calcular" element={<ProtectedRoute adminOnly><AppLayout><RVCalcular /></AppLayout></ProtectedRoute>} />
-      <Route path="/rv/resultados" element={<ProtectedRoute adminOnly><AppLayout><RVResultados /></AppLayout></ProtectedRoute>} />
+      {/* Rotas legadas redirecionam para o wizard unificado */}
+      <Route path="/rv/indicadores" element={<Navigate to="/rv/calcular" />} />
+      <Route path="/rv/regras" element={<Navigate to="/rv/calcular" />} />
+      <Route path="/rv/resultados" element={<Navigate to="/rv/calcular" />} />
       <Route path="*" element={<Navigate to="/" />} />
     </Routes>
   );

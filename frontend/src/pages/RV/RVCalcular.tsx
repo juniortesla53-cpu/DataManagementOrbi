@@ -1,180 +1,214 @@
 import { useState } from 'react';
-import { Play, Loader2, AlertCircle, CheckCircle, Trash2, ChevronDown } from 'lucide-react';
+import { Target, Settings2, Database, BarChart3, CheckCircle, Loader2, ChevronDown, Trash2 } from 'lucide-react';
 import { useApi } from '../../hooks/useApi';
 import { useToast } from '../../contexts/ToastContext';
 import api from '../../api';
+import Stepper, { type StepConfig } from './components/Stepper';
+import StepIndicadores from './components/StepIndicadores';
+import StepRegras from './components/StepRegras';
+import StepFontesDados from './components/StepFontesDados';
+import StepSimulacao from './components/StepSimulacao';
+import StepConfirmacao from './components/StepConfirmacao';
+
+const STEPS: StepConfig[] = [
+  { id: 'indicadores', label: '1° Indicadores', icon: Target,      description: 'Defina os KPIs' },
+  { id: 'regras',      label: '2° Regras',      icon: Settings2,   description: 'Configure as regras' },
+  { id: 'fontes',      label: '3° Fonte de Dados', icon: Database,  description: 'Selecione período e dados' },
+  { id: 'calculo',     label: '4° Cálculo',     icon: BarChart3,   description: 'Simule o cálculo' },
+  { id: 'resultados',  label: '5° Resultados',  icon: CheckCircle, description: 'Confirme e salve' },
+];
 
 export default function RVCalcular() {
-  const { data: calculos, loading, error, refetch } = useApi<any[]>('/rv/calculos');
-  const { data: periodos } = useApi<any[]>('/rv/periodos');
-  const { showSuccess, showError } = useToast();
+  // Wizard state
+  const [currentStep, setCurrentStep] = useState(0);
   const [periodo, setPeriodo] = useState('');
-  const [calculando, setCalculando] = useState(false);
-  const [resultado, setResultado] = useState<any>(null);
-  const [expanded, setExpanded] = useState<number | null>(null);
+  const [regrasSelecionadas, setRegrasSelecionadas] = useState<number[]>([]);
+  const [simulacao, setSimulacao] = useState<any>(null);
+  const [showHistorico, setShowHistorico] = useState(false);
 
-  const calcular = async () => {
-    if (!periodo) { showError('Selecione um período'); return; }
-    setCalculando(true);
-    setResultado(null);
-    try {
-      const { data } = await api.post('/rv/calcular', { periodo });
-      setResultado(data);
-      showSuccess(`Cálculo concluído! ${data.totalColaboradores} colaboradores, R$ ${data.totalRV.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`);
-      refetch();
-    } catch (err: any) { showError(err.response?.data?.error || 'Erro ao calcular'); }
-    finally { setCalculando(false); }
+  // Histórico
+  const { data: calculos, loading: loadingCalc, refetch: refetchCalculos } = useApi<any[]>('/rv/calculos');
+  const { showSuccess, showError } = useToast();
+  const [expandedCalc, setExpandedCalc] = useState<number | null>(null);
+  const [calcDetalhes, setCalcDetalhes] = useState<any>(null);
+
+  const completedSteps = new Set<number>();
+  for (let i = 0; i < currentStep; i++) completedSteps.add(i);
+
+  const goToStep = (step: number) => {
+    if (step < currentStep) {
+      // Se voltar antes do cálculo, limpar simulação
+      if (step < 3) setSimulacao(null);
+      setCurrentStep(step);
+    }
   };
 
+  const nextStep = () => {
+    if (currentStep < STEPS.length - 1) {
+      setCurrentStep(currentStep + 1);
+    }
+  };
+
+  const prevStep = () => {
+    if (currentStep > 0) {
+      if (currentStep <= 3) setSimulacao(null);
+      setCurrentStep(currentStep - 1);
+    }
+  };
+
+  // Histórico funções
   const mudarStatus = async (id: number, status: string) => {
-    try { await api.put(`/rv/calculos/${id}/status`, { status }); showSuccess(`Status alterado para ${status}`); refetch(); }
+    try { await api.put(`/rv/calculos/${id}/status`, { status }); showSuccess(`Status alterado para ${status}`); refetchCalculos(); }
     catch (err: any) { showError(err.response?.data?.error || 'Erro'); }
   };
 
   const excluir = async (id: number) => {
     if (!confirm('Excluir este cálculo e todos os resultados?')) return;
-    try { await api.delete(`/rv/calculos/${id}`); showSuccess('Cálculo excluído'); refetch(); }
+    try { await api.delete(`/rv/calculos/${id}`); showSuccess('Cálculo excluído'); refetchCalculos(); }
     catch (err: any) { showError(err.response?.data?.error || 'Erro'); }
   };
 
   const verDetalhes = async (id: number) => {
-    if (expanded === id) { setExpanded(null); return; }
+    if (expandedCalc === id) { setExpandedCalc(null); return; }
     try {
       const { data } = await api.get(`/rv/calculos/${id}`);
-      setResultado(data);
-      setExpanded(id);
+      setCalcDetalhes(data);
+      setExpandedCalc(id);
     } catch { showError('Erro ao carregar detalhes'); }
   };
 
-  if (loading) return <div className="flex items-center justify-center min-h-[400px]"><Loader2 className="w-8 h-8 animate-spin text-nexus-purple" /></div>;
-  if (error) return <div className="flex items-center justify-center min-h-[400px]"><div className="text-center"><AlertCircle className="w-10 h-10 text-nexus-danger mx-auto mb-2" /><p className="text-nexus-muted text-sm">{error}</p></div></div>;
-
-  // Agrupar resultados por colaborador
-  const agrupadoPorColab = resultado?.resultados?.reduce((acc: any, r: any) => {
-    const key = r.matricula;
-    if (!acc[key]) acc[key] = { matricula: r.matricula, nome: r.nome_colaborador, regras: [], total: 0 };
-    acc[key].regras.push(r);
-    acc[key].total += r.valor_rv;
-    return acc;
-  }, {});
-
   return (
-    <div className="p-6 space-y-5 animate-fadeIn">
+    <div className="p-6 space-y-6 animate-fadeIn">
+      {/* Header */}
       <div>
-        <h1 className="text-lg font-bold text-nexus-text">Calcular RV</h1>
-        <p className="text-xs text-nexus-muted">Execute o cálculo da remuneração variável para um período</p>
+        <h1 className="text-lg font-bold text-nexus-text">Plano de Cálculo RV</h1>
+        <p className="text-xs text-nexus-muted">Siga as etapas para configurar e calcular a remuneração variável</p>
       </div>
 
-      {/* Seletor de período + botão */}
+      {/* Stepper */}
       <div className="card p-5">
-        <div className="flex items-end gap-4">
-          <div className="flex-1 max-w-xs">
-            <label className="block text-[10px] text-nexus-muted mb-1 font-semibold uppercase">Período</label>
-            <select value={periodo} onChange={e => setPeriodo(e.target.value)} className="w-full px-3 py-2.5 bg-nexus-bg border border-nexus-border rounded-lg text-sm">
-              <option value="">Selecione o período...</option>
-              {(periodos || []).map((p: any) => <option key={p.periodo} value={p.periodo}>{p.periodo}</option>)}
-            </select>
-          </div>
-          <button onClick={calcular} disabled={calculando || !periodo} className="flex items-center gap-2 px-6 py-2.5 btn-gradient rounded-lg text-sm font-semibold disabled:opacity-50">
-            {calculando ? <Loader2 size={16} className="animate-spin" /> : <Play size={16} />}
-            {calculando ? 'Calculando...' : 'Calcular RV'}
-          </button>
-        </div>
+        <Stepper
+          steps={STEPS}
+          currentStep={currentStep}
+          onStepClick={goToStep}
+          completedSteps={completedSteps}
+        />
       </div>
 
-      {/* Resultado do último cálculo executado */}
-      {resultado?.resultados && expanded === null && (
-        <div className="card p-5 animate-fadeIn">
-          <div className="flex items-center gap-2 mb-4">
-            <CheckCircle size={18} className="text-emerald-500" />
-            <h3 className="text-sm font-semibold text-nexus-text">Resultado — {resultado.periodo}</h3>
-            <span className="text-xs text-nexus-muted ml-auto">{resultado.totalColaboradores} colaboradores · {resultado.totalRegras} regras</span>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-nexus-border bg-nexus-bg text-nexus-muted text-xs">
-                  <th className="text-left p-2 font-semibold">Colaborador</th>
-                  <th className="text-left p-2 font-semibold">Regra</th>
-                  <th className="text-right p-2 font-semibold">Indicador</th>
-                  <th className="text-right p-2 font-semibold">Valor RV</th>
-                </tr>
-              </thead>
-              <tbody>
-                {resultado.resultados.map((r: any, i: number) => (
-                  <tr key={i} className="border-b border-nexus-borderLight hover:bg-nexus-bg/50">
-                    <td className="p-2 font-medium text-nexus-text">{r.nome_colaborador || r.nomeColab}</td>
-                    <td className="p-2 text-nexus-textSecondary">{r.regra_nome || r.regra}</td>
-                    <td className="p-2 text-right text-nexus-textSecondary">{r.valor_indicador != null ? `${r.valor_indicador}%` : '—'}</td>
-                    <td className={`p-2 text-right font-bold ${r.valor_rv > 0 ? 'text-emerald-600' : 'text-nexus-muted'}`}>R$ {(r.valor_rv || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
-                  </tr>
-                ))}
-              </tbody>
-              <tfoot>
-                <tr className="bg-nexus-bg font-bold">
-                  <td colSpan={3} className="p-2 text-nexus-text">Total</td>
-                  <td className="p-2 text-right text-nexus-purple">R$ {(resultado.totalRV || resultado.resultados?.reduce((s: number, r: any) => s + (r.valor_rv || 0), 0) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
-                </tr>
-              </tfoot>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* Histórico de cálculos */}
+      {/* Step content */}
       <div>
-        <h3 className="text-sm font-semibold text-nexus-text mb-3">Histórico de Cálculos</h3>
-        <div className="space-y-2">
-          {(calculos || []).map(c => (
-            <div key={c.id} className="card overflow-hidden">
-              <div className="flex items-center justify-between p-4 cursor-pointer hover:bg-nexus-bg/50 transition-colors" onClick={() => verDetalhes(c.id)}>
-                <div className="flex items-center gap-3">
-                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${
-                    c.status === 'aprovado' ? 'bg-emerald-100 text-emerald-700' :
-                    c.status === 'pago' ? 'bg-blue-100 text-blue-700' :
-                    'bg-amber-100 text-amber-700'
-                  }`}>{c.status}</span>
-                  <div>
-                    <p className="font-semibold text-sm text-nexus-text">Período {c.periodo}</p>
-                    <p className="text-[11px] text-nexus-muted">{new Date(c.data_calculo).toLocaleString('pt-BR')} · {c.total_colaboradores} colaboradores</p>
+        {currentStep === 0 && (
+          <StepIndicadores onNext={nextStep} />
+        )}
+        {currentStep === 1 && (
+          <StepRegras
+            regrasSelecionadas={regrasSelecionadas}
+            setRegrasSelecionadas={setRegrasSelecionadas}
+            onNext={nextStep}
+            onBack={prevStep}
+          />
+        )}
+        {currentStep === 2 && (
+          <StepFontesDados
+            periodo={periodo}
+            setPeriodo={setPeriodo}
+            onNext={nextStep}
+            onBack={prevStep}
+          />
+        )}
+        {currentStep === 3 && (
+          <StepSimulacao
+            periodo={periodo}
+            regrasSelecionadas={regrasSelecionadas}
+            simulacao={simulacao}
+            setSimulacao={setSimulacao}
+            onNext={nextStep}
+            onBack={prevStep}
+          />
+        )}
+        {currentStep === 4 && (
+          <StepConfirmacao
+            periodo={periodo}
+            regrasSelecionadas={regrasSelecionadas}
+            simulacao={simulacao}
+            onBack={prevStep}
+          />
+        )}
+      </div>
+
+      {/* Histórico de Cálculos (colapsável) */}
+      <div className="card overflow-hidden">
+        <button
+          onClick={() => setShowHistorico(!showHistorico)}
+          className="w-full flex items-center justify-between p-4 hover:bg-nexus-bg/50 transition-colors"
+        >
+          <span className="text-sm font-semibold text-nexus-text">Histórico de Cálculos</span>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-nexus-muted">{calculos?.length || 0} cálculos</span>
+            <ChevronDown size={16} className={`text-nexus-muted transition-transform ${showHistorico ? 'rotate-180' : ''}`} />
+          </div>
+        </button>
+
+        {showHistorico && (
+          <div className="border-t border-nexus-border">
+            {loadingCalc ? (
+              <div className="p-6 text-center"><Loader2 size={20} className="animate-spin text-nexus-purple mx-auto" /></div>
+            ) : (!calculos || calculos.length === 0) ? (
+              <p className="p-6 text-nexus-muted text-sm text-center">Nenhum cálculo realizado ainda</p>
+            ) : (
+              <div className="divide-y divide-nexus-borderLight">
+                {calculos.map(c => (
+                  <div key={c.id}>
+                    <div className="flex items-center justify-between p-4 cursor-pointer hover:bg-nexus-bg/30 transition-colors" onClick={() => verDetalhes(c.id)}>
+                      <div className="flex items-center gap-3">
+                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${
+                          c.status === 'aprovado' ? 'bg-emerald-100 text-emerald-700' :
+                          c.status === 'pago' ? 'bg-blue-100 text-blue-700' :
+                          'bg-amber-100 text-amber-700'
+                        }`}>{c.status}</span>
+                        <div>
+                          <p className="font-semibold text-sm text-nexus-text">Período {c.periodo}</p>
+                          <p className="text-[11px] text-nexus-muted">{new Date(c.data_calculo).toLocaleString('pt-BR')} · {c.total_colaboradores} colaboradores</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className="font-bold text-sm text-nexus-purple">R$ {(c.total_rv || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                        {c.status === 'rascunho' && <button onClick={e => { e.stopPropagation(); mudarStatus(c.id, 'aprovado'); }} className="text-[10px] px-2 py-1 bg-emerald-100 text-emerald-700 rounded font-semibold hover:bg-emerald-200">Aprovar</button>}
+                        {c.status === 'aprovado' && <button onClick={e => { e.stopPropagation(); mudarStatus(c.id, 'pago'); }} className="text-[10px] px-2 py-1 bg-blue-100 text-blue-700 rounded font-semibold hover:bg-blue-200">Marcar Pago</button>}
+                        <button onClick={e => { e.stopPropagation(); excluir(c.id); }} className="p-1 text-nexus-muted hover:text-nexus-danger"><Trash2 size={14} /></button>
+                        <ChevronDown size={16} className={`text-nexus-muted transition-transform ${expandedCalc === c.id ? 'rotate-180' : ''}`} />
+                      </div>
+                    </div>
+                    {expandedCalc === c.id && calcDetalhes?.resultados && (
+                      <div className="px-4 pb-4 border-t border-nexus-borderLight pt-3">
+                        <table className="w-full text-xs">
+                          <thead>
+                            <tr className="text-nexus-muted">
+                              <th className="text-left p-1.5 font-semibold">Colaborador</th>
+                              <th className="text-left p-1.5 font-semibold">Regra</th>
+                              <th className="text-right p-1.5 font-semibold">Indicador</th>
+                              <th className="text-right p-1.5 font-semibold">Valor RV</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {calcDetalhes.resultados.map((r: any, i: number) => (
+                              <tr key={i} className="border-t border-nexus-borderLight">
+                                <td className="p-1.5 font-medium text-nexus-text">{r.nome_colaborador}</td>
+                                <td className="p-1.5 text-nexus-textSecondary">{r.regra_nome}</td>
+                                <td className="p-1.5 text-right">{r.valor_indicador != null ? `${r.valor_indicador}%` : '—'}</td>
+                                <td className={`p-1.5 text-right font-bold ${r.valor_rv > 0 ? 'text-emerald-600' : 'text-nexus-muted'}`}>R$ {(r.valor_rv || 0).toFixed(2)}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
                   </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className="font-bold text-sm text-nexus-purple">R$ {(c.total_rv || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
-                  {c.status === 'rascunho' && <button onClick={e => { e.stopPropagation(); mudarStatus(c.id, 'aprovado'); }} className="text-[10px] px-2 py-1 bg-emerald-100 text-emerald-700 rounded font-semibold hover:bg-emerald-200">Aprovar</button>}
-                  {c.status === 'aprovado' && <button onClick={e => { e.stopPropagation(); mudarStatus(c.id, 'pago'); }} className="text-[10px] px-2 py-1 bg-blue-100 text-blue-700 rounded font-semibold hover:bg-blue-200">Marcar Pago</button>}
-                  <button onClick={e => { e.stopPropagation(); excluir(c.id); }} className="p-1 text-nexus-muted hover:text-nexus-danger"><Trash2 size={14} /></button>
-                  <ChevronDown size={16} className={`text-nexus-muted transition-transform ${expanded === c.id ? 'rotate-180' : ''}`} />
-                </div>
+                ))}
               </div>
-              {expanded === c.id && resultado?.resultados && (
-                <div className="px-4 pb-4 border-t border-nexus-border pt-3">
-                  <table className="w-full text-xs">
-                    <thead>
-                      <tr className="text-nexus-muted">
-                        <th className="text-left p-1.5 font-semibold">Colaborador</th>
-                        <th className="text-left p-1.5 font-semibold">Regra</th>
-                        <th className="text-right p-1.5 font-semibold">Indicador</th>
-                        <th className="text-right p-1.5 font-semibold">Valor RV</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {resultado.resultados.map((r: any, i: number) => (
-                        <tr key={i} className="border-t border-nexus-borderLight">
-                          <td className="p-1.5 font-medium text-nexus-text">{r.nome_colaborador}</td>
-                          <td className="p-1.5 text-nexus-textSecondary">{r.regra_nome}</td>
-                          <td className="p-1.5 text-right">{r.valor_indicador != null ? `${r.valor_indicador}%` : '—'}</td>
-                          <td className={`p-1.5 text-right font-bold ${r.valor_rv > 0 ? 'text-emerald-600' : 'text-nexus-muted'}`}>R$ {(r.valor_rv || 0).toFixed(2)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-          ))}
-          {(!calculos || calculos.length === 0) && <p className="text-nexus-muted text-sm text-center py-8">Nenhum cálculo realizado ainda</p>}
-        </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
