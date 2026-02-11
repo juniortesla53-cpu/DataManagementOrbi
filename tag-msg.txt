@@ -1,1 +1,0 @@
-v1.3 - Nexus RV: modulo de remuneracao variavel com motor de calculo
