@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { LayoutDashboard, FileBarChart, Users, Shield, BarChart3, LogOut, ChevronLeft, ChevronRight } from 'lucide-react';
+import { LayoutDashboard, FileBarChart, Users, Shield, BarChart3, LogOut, ChevronLeft, ChevronRight, Calculator, Target, Settings2, Play, ListChecks } from 'lucide-react';
 import NexusLogo from './NexusLogo';
 
 export default function Sidebar() {
@@ -18,6 +18,14 @@ export default function Sidebar() {
     { to: '/admin/reports', icon: FileBarChart, label: 'Relatórios' },
     { to: '/admin/permissions', icon: Shield, label: 'Permissões' },
     { to: '/admin/powerbi', icon: BarChart3, label: 'Power BI' },
+  ] : [];
+
+  const rvItems = isAdmin ? [
+    { to: '/rv', icon: Calculator, label: 'RV Dashboard' },
+    { to: '/rv/indicadores', icon: Target, label: 'Indicadores' },
+    { to: '/rv/regras', icon: Settings2, label: 'Regras' },
+    { to: '/rv/calcular', icon: Play, label: 'Calcular' },
+    { to: '/rv/resultados', icon: ListChecks, label: 'Resultados' },
   ] : [];
 
   const isActive = (path: string) => loc.pathname === path;
@@ -74,6 +82,12 @@ export default function Sidebar() {
           <div className="space-y-1">
             {!collapsed && <p className="text-[10px] font-semibold text-white/30 uppercase tracking-widest px-3 mb-2">Admin</p>}
             {adminItems.map(item => <NavItem key={item.to} {...item} />)}
+          </div>
+        )}
+        {rvItems.length > 0 && (
+          <div className="space-y-1">
+            {!collapsed && <p className="text-[10px] font-semibold text-white/30 uppercase tracking-widest px-3 mb-2">Nexus RV</p>}
+            {rvItems.map(item => <NavItem key={item.to} {...item} />)}
           </div>
         )}
       </nav>

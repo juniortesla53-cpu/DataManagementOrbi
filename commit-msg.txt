@@ -1,0 +1,19 @@
+v1.3 - Nexus RV: modulo de remuneracao variavel
+
+Backend:
+- 8 novas tabelas SQL (indicadores_dim, indicadores_fato, regras, faixas, condicoes, calculos, resultados, audit_log)
+- Motor de calculo completo: avalia condicoes, calcula indicadores, encontra faixas, gera payout
+- Suporte a regras com faixas, condicoes pre-requisito, metas automaticas
+- API REST completa: CRUD indicadores, regras, fatos + endpoint de calculo
+- Seed com 8 indicadores, 240 fatos ficticios (5 colaboradores x 6 meses), 3 regras
+
+Frontend:
+- RVDashboard: visao geral com stats, ultimo calculo, top performers
+- RVIndicadores: CRUD de indicadores (dimensao) com busca e modal
+- RVRegras: CRUD de regras com editor de faixas e condicoes dinamico
+- RVCalcular: executar calculo por periodo, ver resultados, historico com status
+- RVResultados: visualizacao agrupada por colaborador, detalhes expandiveis, export CSV
+
+Integracao:
+- 5 novas rotas no App.tsx (admin only)
+- Secao "Nexus RV" no Sidebar com 5 itens de menu

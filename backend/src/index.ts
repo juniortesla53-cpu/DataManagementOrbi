@@ -11,6 +11,7 @@ import permissionsRoutes from './routes/permissions.routes';
 import powerbiRoutes from './routes/powerbi.routes';
 import adminReportsRoutes from './routes/admin-reports.routes';
 import embedRoutes from './routes/embed.routes';
+import rvRoutes from './routes/rv.routes';
 
 dotenv.config();
 
@@ -32,6 +33,7 @@ app.use('/api/admin/reports', adminReportsRoutes);
 app.use('/api/admin/permissions', permissionsRoutes);
 app.use('/api/admin/powerbi', powerbiRoutes);
 app.use('/api/reports', embedRoutes); // Embed endpoint at /api/reports/:id/embed
+app.use('/api/rv', rvRoutes);        // Nexus RV
 
 // Health check
 app.get('/api/health', (req, res) => {
