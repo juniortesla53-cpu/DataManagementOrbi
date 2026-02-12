@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
-import { Target, Plus, Edit2, Trash2, X, Loader2, ChevronRight, AlertCircle } from 'lucide-react';
+import { Target, Plus, Edit2, Trash2, X, Loader2, ChevronRight, ChevronLeft, AlertCircle, Power } from 'lucide-react';
 import api from '../../../api';
 
 interface Props {
+  clienteId: number | null;
   onNext: () => void;
+  onBack: () => void;
 }
 
-export default function StepIndicadores({ onNext }: Props) {
+export default function StepIndicadores({ clienteId, onNext, onBack }: Props) {
   const [indicadores, setIndicadores] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -17,7 +19,8 @@ export default function StepIndicadores({ onNext }: Props) {
   const fetchIndicadores = async () => {
     setLoading(true);
     try {
-      const { data } = await api.get('/rv/indicadores');
+      const params = clienteId ? `?id_cliente=${clienteId}` : '';
+      const { data } = await api.get(`/rv/indicadores${params}`);
       setIndicadores(data);
       setError(null);
     } catch (err: any) {
@@ -27,7 +30,7 @@ export default function StepIndicadores({ onNext }: Props) {
     }
   };
 
-  useEffect(() => { fetchIndicadores(); }, []);
+  useEffect(() => { fetchIndicadores(); }, [clienteId]);
 
   const ativos = indicadores.filter(i => i.ativo);
 
@@ -45,10 +48,11 @@ export default function StepIndicadores({ onNext }: Props) {
     if (!form.codigo || !form.nome) return;
     setSaving(true);
     try {
+      const payload = { ...form, id_cliente: clienteId };
       if (modal === 'new') {
-        await api.post('/rv/indicadores', form);
+        await api.post('/rv/indicadores', payload);
       } else {
-        await api.put(`/rv/indicadores/${modal}`, { ...form, ativo: 1 });
+        await api.put(`/rv/indicadores/${modal}`, { ...payload, ativo: 1 });
       }
       setModal(null);
       fetchIndicadores();
@@ -65,6 +69,16 @@ export default function StepIndicadores({ onNext }: Props) {
       await api.delete(`/rv/indicadores/${id}`);
       fetchIndicadores();
     } catch {}
+  };
+
+  const toggleAtivo = async (ind: any) => {
+    const novoStatus = ind.ativo ? 0 : 1;
+    try {
+      await api.put(`/rv/indicadores/${ind.id}`, { ...ind, ativo: novoStatus, id_cliente: clienteId });
+      fetchIndicadores();
+    } catch (err: any) {
+      alert(err.response?.data?.error || 'Erro ao alterar status');
+    }
   };
 
   if (loading) {
@@ -148,6 +162,13 @@ export default function StepIndicadores({ onNext }: Props) {
                   </span>
                 </td>
                 <td className="p-3 text-right space-x-1">
+                  <button
+                    onClick={() => toggleAtivo(i)}
+                    className={`p-1 transition-colors ${i.ativo ? 'text-emerald-600 hover:text-emerald-700' : 'text-nexus-muted hover:text-nexus-text'}`}
+                    title={i.ativo ? 'Desativar' : 'Ativar'}
+                  >
+                    <Power size={14} />
+                  </button>
                   <button onClick={() => openEdit(i)} className="p-1 text-nexus-muted hover:text-nexus-purple transition-colors"><Edit2 size={14} /></button>
                   <button onClick={() => remove(i.id)} className="p-1 text-nexus-muted hover:text-nexus-danger transition-colors"><Trash2 size={14} /></button>
                 </td>
@@ -161,7 +182,10 @@ export default function StepIndicadores({ onNext }: Props) {
       </div>
 
       {/* Navegação */}
-      <div className="flex justify-end">
+      <div className="flex justify-between">
+        <button onClick={onBack} className="flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium text-nexus-textSecondary bg-nexus-bg border border-nexus-border hover:border-nexus-muted transition-colors">
+          <ChevronLeft size={16} /> Voltar
+        </button>
         <button
           onClick={onNext}
           disabled={ativos.length === 0}
@@ -174,26 +198,28 @@ export default function StepIndicadores({ onNext }: Props) {
       {/* Modal */}
       {modal !== null && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setModal(null)}>
-          <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-modal animate-scaleIn" onClick={e => e.stopPropagation()}>
+          <div className="bg-white rounded-2xl p-6 w-full max-w-2xl shadow-modal animate-scaleIn" onClick={e => e.stopPropagation()}>
             <div className="flex justify-between items-center mb-5">
               <h2 className="font-bold text-nexus-text">{modal === 'new' ? 'Novo Indicador' : 'Editar Indicador'}</h2>
               <button onClick={() => setModal(null)} className="text-nexus-muted hover:text-nexus-text"><X size={18} /></button>
             </div>
             <div className="space-y-3">
-              <div>
-                <label className="block text-[10px] text-nexus-muted mb-1 font-semibold uppercase">Código</label>
-                <input type="text" value={form.codigo} onChange={e => setForm({ ...form, codigo: e.target.value.toUpperCase() })}
-                  className="w-full px-3 py-2 bg-nexus-bg border border-nexus-border rounded-lg text-xs" placeholder="VENDAS_REALIZADAS" />
-              </div>
-              <div>
-                <label className="block text-[10px] text-nexus-muted mb-1 font-semibold uppercase">Nome</label>
-                <input type="text" value={form.nome} onChange={e => setForm({ ...form, nome: e.target.value })}
-                  className="w-full px-3 py-2 bg-nexus-bg border border-nexus-border rounded-lg text-xs" />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[10px] text-nexus-muted mb-1 font-semibold uppercase">Código</label>
+                  <input type="text" value={form.codigo} onChange={e => setForm({ ...form, codigo: e.target.value.toUpperCase() })}
+                    className="w-full px-3 py-2 bg-nexus-bg border border-nexus-border rounded-lg text-xs" placeholder="VENDAS_REALIZADAS" />
+                </div>
+                <div>
+                  <label className="block text-[10px] text-nexus-muted mb-1 font-semibold uppercase">Nome</label>
+                  <input type="text" value={form.nome} onChange={e => setForm({ ...form, nome: e.target.value })}
+                    className="w-full px-3 py-2 bg-nexus-bg border border-nexus-border rounded-lg text-xs" />
+                </div>
               </div>
               <div>
                 <label className="block text-[10px] text-nexus-muted mb-1 font-semibold uppercase">Descrição</label>
-                <input type="text" value={form.descricao} onChange={e => setForm({ ...form, descricao: e.target.value })}
-                  className="w-full px-3 py-2 bg-nexus-bg border border-nexus-border rounded-lg text-xs" />
+                <textarea value={form.descricao} onChange={e => setForm({ ...form, descricao: e.target.value })}
+                  className="w-full px-3 py-2 bg-nexus-bg border border-nexus-border rounded-lg text-xs resize-none" rows={2} />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>

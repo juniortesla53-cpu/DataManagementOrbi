@@ -1,16 +1,19 @@
 import { useState } from 'react';
-import { Target, Settings2, Database, BarChart3, CheckCircle, Loader2, ChevronDown, Trash2 } from 'lucide-react';
+import { Building2, Target, Settings2, Database, BarChart3, CheckCircle, Loader2, ChevronDown, Trash2, Mail } from 'lucide-react';
 import { useApi } from '../../hooks/useApi';
 import { useToast } from '../../contexts/ToastContext';
 import api from '../../api';
 import Stepper, { type StepConfig } from './components/Stepper';
+import StepCliente from './components/StepCliente';
 import StepIndicadores from './components/StepIndicadores';
 import StepRegras from './components/StepRegras';
 import StepFontesDados from './components/StepFontesDados';
 import StepSimulacao from './components/StepSimulacao';
 import StepConfirmacao from './components/StepConfirmacao';
+import EnviarEmailModal from './components/EnviarEmailModal';
 
 const STEPS: StepConfig[] = [
+  { id: 'cliente',     label: '0° Cliente',     icon: Building2,   description: 'Selecione o cliente' },
   { id: 'indicadores', label: '1° Indicadores', icon: Target,      description: 'Defina os KPIs' },
   { id: 'regras',      label: '2° Regras',      icon: Settings2,   description: 'Configure as regras' },
   { id: 'fontes',      label: '3° Fonte de Dados', icon: Database,  description: 'Selecione período e dados' },
@@ -21,6 +24,7 @@ const STEPS: StepConfig[] = [
 export default function RVCalcular() {
   // Wizard state
   const [currentStep, setCurrentStep] = useState(0);
+  const [clienteSelecionado, setClienteSelecionado] = useState<number | null>(null);
   const [periodo, setPeriodo] = useState('');
   const [regrasSelecionadas, setRegrasSelecionadas] = useState<number[]>([]);
   const [simulacao, setSimulacao] = useState<any>(null);
@@ -31,6 +35,7 @@ export default function RVCalcular() {
   const { showSuccess, showError } = useToast();
   const [expandedCalc, setExpandedCalc] = useState<number | null>(null);
   const [calcDetalhes, setCalcDetalhes] = useState<any>(null);
+  const [emailModalCalc, setEmailModalCalc] = useState<{ id: number; periodo: string } | null>(null);
 
   const completedSteps = new Set<number>();
   for (let i = 0; i < currentStep; i++) completedSteps.add(i);
@@ -38,7 +43,12 @@ export default function RVCalcular() {
   const goToStep = (step: number) => {
     if (step < currentStep) {
       // Se voltar antes do cálculo, limpar simulação
-      if (step < 3) setSimulacao(null);
+      if (step < 4) setSimulacao(null);
+      // Se voltar para step 0, pode trocar de cliente
+      if (step === 0) {
+        setRegrasSelecionadas([]);
+        setPeriodo('');
+      }
       setCurrentStep(step);
     }
   };
@@ -51,7 +61,7 @@ export default function RVCalcular() {
 
   const prevStep = () => {
     if (currentStep > 0) {
-      if (currentStep <= 3) setSimulacao(null);
+      if (currentStep <= 4) setSimulacao(null);
       setCurrentStep(currentStep - 1);
     }
   };
@@ -98,17 +108,29 @@ export default function RVCalcular() {
       {/* Step content */}
       <div>
         {currentStep === 0 && (
-          <StepIndicadores onNext={nextStep} />
+          <StepCliente
+            clienteSelecionado={clienteSelecionado}
+            setClienteSelecionado={setClienteSelecionado}
+            onNext={nextStep}
+          />
         )}
         {currentStep === 1 && (
+          <StepIndicadores
+            clienteId={clienteSelecionado}
+            onNext={nextStep}
+            onBack={prevStep}
+          />
+        )}
+        {currentStep === 2 && (
           <StepRegras
+            clienteId={clienteSelecionado}
             regrasSelecionadas={regrasSelecionadas}
             setRegrasSelecionadas={setRegrasSelecionadas}
             onNext={nextStep}
             onBack={prevStep}
           />
         )}
-        {currentStep === 2 && (
+        {currentStep === 3 && (
           <StepFontesDados
             periodo={periodo}
             setPeriodo={setPeriodo}
@@ -116,7 +138,7 @@ export default function RVCalcular() {
             onBack={prevStep}
           />
         )}
-        {currentStep === 3 && (
+        {currentStep === 4 && (
           <StepSimulacao
             periodo={periodo}
             regrasSelecionadas={regrasSelecionadas}
@@ -126,8 +148,9 @@ export default function RVCalcular() {
             onBack={prevStep}
           />
         )}
-        {currentStep === 4 && (
+        {currentStep === 5 && (
           <StepConfirmacao
+            clienteId={clienteSelecionado}
             periodo={periodo}
             regrasSelecionadas={regrasSelecionadas}
             simulacao={simulacao}
@@ -173,6 +196,7 @@ export default function RVCalcular() {
                       </div>
                       <div className="flex items-center gap-3">
                         <span className="font-bold text-sm text-nexus-purple">R$ {(c.total_rv || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                        <button onClick={e => { e.stopPropagation(); setEmailModalCalc({ id: c.id, periodo: c.periodo }); }} className="p-1.5 text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded transition-colors" title="Enviar por email"><Mail size={14} /></button>
                         {c.status === 'rascunho' && <button onClick={e => { e.stopPropagation(); mudarStatus(c.id, 'aprovado'); }} className="text-[10px] px-2 py-1 bg-emerald-100 text-emerald-700 rounded font-semibold hover:bg-emerald-200">Aprovar</button>}
                         {c.status === 'aprovado' && <button onClick={e => { e.stopPropagation(); mudarStatus(c.id, 'pago'); }} className="text-[10px] px-2 py-1 bg-blue-100 text-blue-700 rounded font-semibold hover:bg-blue-200">Marcar Pago</button>}
                         <button onClick={e => { e.stopPropagation(); excluir(c.id); }} className="p-1 text-nexus-muted hover:text-nexus-danger"><Trash2 size={14} /></button>
@@ -210,6 +234,15 @@ export default function RVCalcular() {
           </div>
         )}
       </div>
+
+      {/* Modal de envio de email */}
+      {emailModalCalc && (
+        <EnviarEmailModal
+          idCalculo={emailModalCalc.id}
+          periodo={emailModalCalc.periodo}
+          onClose={() => setEmailModalCalc(null)}
+        />
+      )}
     </div>
   );
 }

@@ -52,6 +52,15 @@ export function initDatabase() {
 
   // ── Nexus RV ──
   db.exec(`
+    CREATE TABLE IF NOT EXISTS rv_clientes (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      nome TEXT NOT NULL,
+      logo_url TEXT,
+      descricao TEXT,
+      ativo INTEGER DEFAULT 1,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
     CREATE TABLE IF NOT EXISTS rv_indicadores_dim (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       codigo TEXT UNIQUE NOT NULL,
@@ -60,6 +69,7 @@ export function initDatabase() {
       unidade TEXT DEFAULT '%',
       tipo TEXT DEFAULT 'percentual' CHECK(tipo IN ('percentual','valor','quantidade')),
       ativo INTEGER DEFAULT 1,
+      id_cliente INTEGER REFERENCES rv_clientes(id),
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 
@@ -82,6 +92,7 @@ export function initDatabase() {
       vigencia_inicio TEXT,
       vigencia_fim TEXT,
       formula_json TEXT,
+      id_cliente INTEGER REFERENCES rv_clientes(id),
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 
@@ -110,7 +121,8 @@ export function initDatabase() {
       data_calculo DATETIME DEFAULT CURRENT_TIMESTAMP,
       status TEXT DEFAULT 'rascunho' CHECK(status IN ('rascunho','aprovado','pago')),
       calculado_por TEXT,
-      observacoes TEXT
+      observacoes TEXT,
+      id_cliente INTEGER REFERENCES rv_clientes(id)
     );
 
     CREATE TABLE IF NOT EXISTS rv_resultados (
@@ -134,6 +146,30 @@ export function initDatabase() {
       usuario TEXT,
       data DATETIME DEFAULT CURRENT_TIMESTAMP
     );
+
+    CREATE TABLE IF NOT EXISTS rv_fontes_dados (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      nome TEXT NOT NULL,
+      tipo TEXT NOT NULL CHECK(tipo IN ('sqlserver','postgresql','excel','csv','txt')),
+      config_json TEXT NOT NULL,
+      mapeamento_json TEXT NOT NULL,
+      id_cliente INTEGER REFERENCES rv_clientes(id),
+      ativo INTEGER DEFAULT 1,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS rv_envios_email (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      id_calculo INTEGER NOT NULL REFERENCES rv_calculos(id) ON DELETE CASCADE,
+      emails_json TEXT NOT NULL,
+      formato TEXT NOT NULL CHECK(formato IN ('csv','xlsx','txt')),
+      delimitador TEXT,
+      assunto TEXT NOT NULL,
+      mensagem TEXT,
+      data_envio DATETIME DEFAULT CURRENT_TIMESTAMP,
+      status TEXT DEFAULT 'enviado' CHECK(status IN ('enviado','pendente','erro'))
+    );
   `);
 
   const count = db.prepare('SELECT COUNT(*) as c FROM users').get() as any;
@@ -142,10 +178,33 @@ export function initDatabase() {
   }
 
   // Seed RV se tabela vazia
+  const rvClientesCount = db.prepare('SELECT COUNT(*) as c FROM rv_clientes').get() as any;
+  if (rvClientesCount.c === 0) {
+    seedRVClientes();
+  }
+
   const rvCount = db.prepare('SELECT COUNT(*) as c FROM rv_indicadores_dim').get() as any;
   if (rvCount.c === 0) {
     seedRV();
   }
+}
+
+function seedRVClientes() {
+  const ins = db.prepare('INSERT INTO rv_clientes (nome, descricao, ativo) VALUES (?, ?, ?)');
+  
+  const tx = db.transaction(() => {
+    ins.run('Tim Brasil', 'Operadora de telefonia móvel e fixa', 1);
+    ins.run('Vivo', 'Operadora de telecomunicações', 1);
+    ins.run('Claro', 'Operadora de telefonia e internet', 1);
+    ins.run('MRV Engenharia', 'Construtora e incorporadora', 1);
+    ins.run('Banco BV', 'Instituição financeira', 1);
+    ins.run('Americanas', 'Varejo e e-commerce', 1);
+    ins.run('Magazine Luiza', 'Varejo e marketplace', 1);
+    ins.run('Localiza', 'Locação de veículos', 1);
+  });
+
+  tx();
+  console.log('✅ RV Clientes seeded: 8 clientes');
 }
 
 function seed() {

@@ -1,21 +1,25 @@
 import { useState } from 'react';
-import { CheckCircle, ChevronLeft, Loader2, Save, PartyPopper, ExternalLink, Calendar, Users, DollarSign, Award } from 'lucide-react';
+import { CheckCircle, ChevronLeft, Loader2, Save, PartyPopper, ExternalLink, Calendar, Users, DollarSign, Award, Mail } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../../api';
 import { useToast } from '../../../contexts/ToastContext';
+import ExportButton from './ExportButton';
+import EnviarEmailModal from './EnviarEmailModal';
 
 interface Props {
+  clienteId: number | null;
   periodo: string;
   regrasSelecionadas: number[];
   simulacao: any;
   onBack: () => void;
 }
 
-export default function StepConfirmacao({ periodo, regrasSelecionadas, simulacao, onBack }: Props) {
+export default function StepConfirmacao({ clienteId, periodo, regrasSelecionadas, simulacao, onBack }: Props) {
   const [observacoes, setObservacoes] = useState('');
   const [salvando, setSalvando] = useState(false);
   const [salvo, setSalvo] = useState(false);
   const [resultado, setResultado] = useState<any>(null);
+  const [modalEmail, setModalEmail] = useState(false);
   const { showSuccess, showError } = useToast();
   const navigate = useNavigate();
 
@@ -26,6 +30,7 @@ export default function StepConfirmacao({ periodo, regrasSelecionadas, simulacao
         periodo,
         regraIds: regrasSelecionadas,
         observacoes: observacoes.trim() || undefined,
+        id_cliente: clienteId,
       });
       setResultado(data);
       setSalvo(true);
@@ -69,22 +74,42 @@ export default function StepConfirmacao({ periodo, regrasSelecionadas, simulacao
             </div>
           </div>
 
-          <div className="flex justify-center gap-3">
-            <button
-              onClick={() => navigate('/rv/resultados')}
-              className="flex items-center gap-2 px-5 py-2.5 btn-gradient rounded-lg text-sm font-semibold"
-            >
-              Ver Resultados
-              <ExternalLink size={14} />
-            </button>
-            <button
-              onClick={() => window.location.reload()}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium text-nexus-textSecondary bg-nexus-bg border border-nexus-border hover:border-nexus-muted transition-colors"
-            >
-              Novo Cálculo
-            </button>
+          <div className="flex flex-col gap-3">
+            <div className="flex justify-center gap-3">
+              <button
+                onClick={() => navigate('/rv/resultados')}
+                className="flex items-center gap-2 px-5 py-2.5 btn-gradient rounded-lg text-sm font-semibold"
+              >
+                Ver Resultados
+                <ExternalLink size={14} />
+              </button>
+              <button
+                onClick={() => setModalEmail(true)}
+                className="flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold bg-blue-500 hover:bg-blue-600 text-white transition-colors"
+              >
+                <Mail size={14} />
+                Enviar por Email
+              </button>
+            </div>
+            <div className="flex justify-center">
+              <button
+                onClick={() => window.location.reload()}
+                className="flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium text-nexus-textSecondary bg-nexus-bg border border-nexus-border hover:border-nexus-muted transition-colors"
+              >
+                Novo Cálculo
+              </button>
+            </div>
           </div>
         </div>
+
+        {/* Modal de envio de email */}
+        {modalEmail && resultado?.id && (
+          <EnviarEmailModal
+            idCalculo={resultado.id}
+            periodo={periodo}
+            onClose={() => setModalEmail(false)}
+          />
+        )}
       </div>
     );
   }
@@ -155,6 +180,21 @@ export default function StepConfirmacao({ periodo, regrasSelecionadas, simulacao
           </div>
 
           {/* Tabela resumida por colaborador */}
+          <div className="mb-3 flex justify-end">
+            <ExportButton
+              data={(colaboradores || []).map((c: any) => ({
+                matricula: c.matricula,
+                nome: c.nome,
+                total_rv: c.total_rv || 0
+              }))}
+              columns={[
+                { key: 'matricula', label: 'Matrícula' },
+                { key: 'nome', label: 'Colaborador' },
+                { key: 'total_rv', label: 'Total RV (R$)' }
+              ]}
+              filename={`rv_resultados_${periodo}`}
+            />
+          </div>
           <div className="border border-nexus-border rounded-lg overflow-hidden">
             <table className="w-full text-sm">
               <thead>

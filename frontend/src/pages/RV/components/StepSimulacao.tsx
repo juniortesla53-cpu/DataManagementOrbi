@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { BarChart3, ChevronRight, ChevronLeft, Loader2, AlertCircle, CheckCircle, XCircle, Users, DollarSign, Award } from 'lucide-react';
 import api from '../../../api';
+import ExportButton from './ExportButton';
 
 interface Props {
   periodo: string;
@@ -113,12 +114,43 @@ export default function StepSimulacao({ periodo, regrasSelecionadas, simulacao, 
             <BarChart3 size={16} className="text-nexus-purple" />
             <h3 className="text-sm font-semibold text-nexus-text">Simulação Detalhada — {periodo}</h3>
           </div>
-          <button
-            onClick={executarSimulacao}
-            className="text-xs font-medium text-nexus-purple hover:text-nexus-purpleDark transition-colors"
-          >
-            ↻ Recalcular
-          </button>
+          <div className="flex items-center gap-2">
+            <ExportButton
+              data={colaboradores.map((c: any) => {
+                const row: any = {
+                  matricula: c.matricula,
+                  nome: c.nome,
+                  total_rv: c.total_rv || 0
+                };
+                regrasNomes.forEach((rn: any) => {
+                  const regraResult = c.regras.find((r: any) => r.id_regra === rn.id);
+                  row[`${rn.nome}_Indicador`] = regraResult?.indicador_valor ?? '';
+                  row[`${rn.nome}_Faixa`] = regraResult?.faixa ? `${regraResult.faixa.min}-${regraResult.faixa.max ?? '∞'}` : '';
+                  row[`${rn.nome}_Comissao`] = regraResult?.valor_rv ?? 0;
+                  row[`${rn.nome}_CondicoesOK`] = regraResult?.condicoes_ok ? 'Sim' : 'Não';
+                });
+                return row;
+              })}
+              columns={[
+                { key: 'matricula', label: 'Matrícula' },
+                { key: 'nome', label: 'Colaborador' },
+                ...regrasNomes.flatMap((rn: any) => [
+                  { key: `${rn.nome}_Indicador`, label: `${rn.nome} - Indicador (%)` },
+                  { key: `${rn.nome}_Faixa`, label: `${rn.nome} - Faixa` },
+                  { key: `${rn.nome}_Comissao`, label: `${rn.nome} - Comissão (R$)` },
+                  { key: `${rn.nome}_CondicoesOK`, label: `${rn.nome} - Condições` }
+                ]),
+                { key: 'total_rv', label: 'Total RV (R$)' }
+              ]}
+              filename={`rv_simulacao_${periodo}`}
+            />
+            <button
+              onClick={executarSimulacao}
+              className="text-xs font-medium text-nexus-purple hover:text-nexus-purpleDark transition-colors"
+            >
+              ↻ Recalcular
+            </button>
+          </div>
         </div>
 
         <div className="overflow-x-auto">

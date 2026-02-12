@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { LayoutDashboard, FileBarChart, Users, Shield, BarChart3, LogOut, ChevronLeft, ChevronRight, Calculator, Target, Settings2, Play, ListChecks } from 'lucide-react';
+import { LayoutDashboard, FileBarChart, Users, Shield, BarChart3, LogOut, ChevronLeft, ChevronRight, Calculator, Target, Settings2, Play, ListChecks, Database } from 'lucide-react';
 import NexusLogo from './NexusLogo';
 
 export default function Sidebar() {
@@ -22,6 +22,7 @@ export default function Sidebar() {
 
   const rvItems = isAdmin ? [
     { to: '/rv', icon: Calculator, label: 'RV Dashboard' },
+    { to: '/rv/fontes-config', icon: Database, label: 'Fontes de Dados' },
     { to: '/rv/calcular', icon: Play, label: 'Plano de Cálculo' },
   ] : [];
 

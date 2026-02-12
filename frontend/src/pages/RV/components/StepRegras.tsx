@@ -1,15 +1,16 @@
 import { useState, useEffect } from 'react';
-import { Settings2, Plus, Edit2, Trash2, X, Loader2, ChevronRight, ChevronLeft, ChevronDown, ChevronUp, CheckSquare, Square, AlertCircle } from 'lucide-react';
+import { Settings2, Plus, Edit2, Trash2, X, Loader2, ChevronRight, ChevronLeft, ChevronDown, ChevronUp, CheckSquare, Square, AlertCircle, Power } from 'lucide-react';
 import api from '../../../api';
 
 interface Props {
+  clienteId: number | null;
   regrasSelecionadas: number[];
   setRegrasSelecionadas: (r: number[]) => void;
   onNext: () => void;
   onBack: () => void;
 }
 
-export default function StepRegras({ regrasSelecionadas, setRegrasSelecionadas, onNext, onBack }: Props) {
+export default function StepRegras({ clienteId, regrasSelecionadas, setRegrasSelecionadas, onNext, onBack }: Props) {
   const [regras, setRegras] = useState<any[]>([]);
   const [indicadores, setIndicadores] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -28,7 +29,8 @@ export default function StepRegras({ regrasSelecionadas, setRegrasSelecionadas, 
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [regrasRes, indRes] = await Promise.all([api.get('/rv/regras'), api.get('/rv/indicadores')]);
+      const params = clienteId ? `?id_cliente=${clienteId}` : '';
+      const [regrasRes, indRes] = await Promise.all([api.get(`/rv/regras${params}`), api.get(`/rv/indicadores${params}`)]);
       setRegras(regrasRes.data);
       setIndicadores(indRes.data.filter((i: any) => i.ativo));
       setError(null);
@@ -39,7 +41,7 @@ export default function StepRegras({ regrasSelecionadas, setRegrasSelecionadas, 
     }
   };
 
-  useEffect(() => { fetchData(); }, []);
+  useEffect(() => { fetchData(); }, [clienteId]);
 
   // Auto-selecionar todas as regras ativas na primeira carga
   useEffect(() => {
@@ -91,6 +93,7 @@ export default function StepRegras({ regrasSelecionadas, setRegrasSelecionadas, 
     try {
       const payload = {
         ...form,
+        id_cliente: clienteId,
         faixas: form.faixas.map(f => ({ ...f, id_indicador: parseInt(f.id_indicador as any), faixa_min: parseFloat(f.faixa_min as any), faixa_max: parseFloat(f.faixa_max as any), valor_payout: parseFloat(f.valor_payout as any) })),
         condicoes: form.condicoes.map(c => ({ ...c, id_indicador: parseInt(c.id_indicador as any), valor_referencia: parseFloat(c.valor_referencia as any) })),
       };
@@ -115,6 +118,25 @@ export default function StepRegras({ regrasSelecionadas, setRegrasSelecionadas, 
       setRegrasSelecionadas(regrasSelecionadas.filter(r => r !== id));
       fetchData();
     } catch {}
+  };
+
+  const toggleAtivo = async (regra: any) => {
+    const novoStatus = regra.ativo ? 0 : 1;
+    try {
+      await api.put(`/rv/regras/${regra.id}`, {
+        ...regra,
+        ativo: novoStatus,
+        id_cliente: clienteId,
+        faixas: regra.faixas,
+        condicoes: regra.condicoes,
+      });
+      if (novoStatus === 0) {
+        setRegrasSelecionadas(regrasSelecionadas.filter(r => r !== regra.id));
+      }
+      fetchData();
+    } catch (err: any) {
+      alert(err.response?.data?.error || 'Erro ao alterar status');
+    }
   };
 
   if (loading) {
@@ -196,6 +218,13 @@ export default function StepRegras({ regrasSelecionadas, setRegrasSelecionadas, 
 
                 {/* Actions */}
                 <div className="flex items-center gap-1 flex-shrink-0">
+                  <button
+                    onClick={(e) => { e.stopPropagation(); toggleAtivo(r); }}
+                    className={`p-1.5 transition-colors ${r.ativo ? 'text-emerald-600 hover:text-emerald-700' : 'text-nexus-muted hover:text-nexus-text'}`}
+                    title={r.ativo ? 'Desativar' : 'Ativar'}
+                  >
+                    <Power size={14} />
+                  </button>
                   <button onClick={(e) => { e.stopPropagation(); openEdit(r); }} className="p-1.5 text-nexus-muted hover:text-nexus-purple transition-colors"><Edit2 size={14} /></button>
                   <button onClick={(e) => { e.stopPropagation(); remove(r.id); }} className="p-1.5 text-nexus-muted hover:text-nexus-danger transition-colors"><Trash2 size={14} /></button>
                   <button onClick={() => setExpanded(isExpanded ? null : r.id)} className="p-1.5 text-nexus-muted">
@@ -263,7 +292,7 @@ export default function StepRegras({ regrasSelecionadas, setRegrasSelecionadas, 
       {/* Modal criar/editar regra */}
       {modal !== null && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto" onClick={() => setModal(null)}>
-          <div className="bg-white rounded-2xl p-6 w-full max-w-lg shadow-modal animate-scaleIn my-8" onClick={e => e.stopPropagation()}>
+          <div className="bg-white rounded-2xl p-6 w-full max-w-3xl shadow-modal animate-scaleIn my-8" onClick={e => e.stopPropagation()}>
             <div className="flex justify-between items-center mb-5">
               <h2 className="font-bold text-nexus-text">{modal === 'new' ? 'Nova Regra' : 'Editar Regra'}</h2>
               <button onClick={() => setModal(null)} className="text-nexus-muted hover:text-nexus-text"><X size={18} /></button>

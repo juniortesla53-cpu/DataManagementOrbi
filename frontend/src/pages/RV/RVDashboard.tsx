@@ -1,5 +1,6 @@
 import { useApi } from '../../hooks/useApi';
 import { Calculator, Users, TrendingUp, Award, Loader2, AlertCircle } from 'lucide-react';
+import GraficoRVMensal from './components/GraficoRVMensal';
 
 export default function RVDashboard() {
   const { data, loading, error } = useApi<any>('/rv/dashboard');
@@ -97,6 +98,9 @@ export default function RVDashboard() {
           )}
         </div>
       </div>
+
+      {/* Gráfico de histórico mensal */}
+      <GraficoRVMensal />
     </div>
   );
 }

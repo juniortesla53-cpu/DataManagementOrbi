@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Database, Calendar, ChevronRight, ChevronLeft, Loader2, Search, AlertTriangle, CheckCircle, Users } from 'lucide-react';
 import api from '../../../api';
+import ExportButton from './ExportButton';
 
 interface Props {
   periodo: string;
@@ -147,8 +148,8 @@ export default function StepFontesDados({ periodo, setPeriodo, onNext, onBack }:
 
               {/* Tabela */}
               <div className="card overflow-hidden">
-                <div className="p-4 border-b border-nexus-border">
-                  <div className="relative max-w-sm">
+                <div className="p-4 border-b border-nexus-border flex items-center justify-between gap-3">
+                  <div className="relative flex-1 max-w-sm">
                     <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-nexus-muted" />
                     <input
                       type="text"
@@ -158,6 +159,36 @@ export default function StepFontesDados({ periodo, setPeriodo, onNext, onBack }:
                       className="w-full pl-9 pr-3 py-2 bg-nexus-bg border border-nexus-border rounded-lg text-sm"
                     />
                   </div>
+                  <ExportButton
+                    data={colabsComStatus.map((c: any) => {
+                      const row: any = {
+                        matricula: c.matricula,
+                        nome: c.nome,
+                        status: c.completo ? 'Completo' : 'Incompleto'
+                      };
+                      indicadoresVisiveis.forEach((ind: any) => {
+                        const indData = c.indicadores.find((i: any) => i.codigo === ind.codigo);
+                        row[ind.codigo] = indData ? indData.valor : '';
+                        if (indData?.meta != null) row[`${ind.codigo}_META`] = indData.meta;
+                      });
+                      return row;
+                    })}
+                    columns={[
+                      { key: 'matricula', label: 'Matrícula' },
+                      { key: 'nome', label: 'Colaborador' },
+                      { key: 'status', label: 'Status' },
+                      ...indicadoresVisiveis.flatMap((ind: any) => {
+                        const cols = [{ key: ind.codigo, label: ind.nome }];
+                        // Adicionar coluna de meta se houver
+                        const temMeta = colabsComStatus.some((c: any) => 
+                          c.indicadores.find((i: any) => i.codigo === ind.codigo && i.meta != null)
+                        );
+                        if (temMeta) cols.push({ key: `${ind.codigo}_META`, label: `${ind.nome} (Meta)` });
+                        return cols;
+                      })
+                    ]}
+                    filename={`rv_dados_${periodo}`}
+                  />
                 </div>
 
                 <div className="overflow-x-auto">

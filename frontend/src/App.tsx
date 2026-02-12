@@ -12,6 +12,7 @@ import PowerBISettings from './pages/Admin/PowerBISettings';
 import AzureSetupGuide from './pages/Admin/AzureSetupGuide';
 import RVDashboard from './pages/RV/RVDashboard';
 import RVCalcular from './pages/RV/RVCalcular';
+import RVFontesConfig from './pages/RV/RVFontesConfig';
 
 function AppLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -38,6 +39,7 @@ export default function App() {
       <Route path="/admin/powerbi/setup-guide" element={<ProtectedRoute adminOnly><AppLayout><AzureSetupGuide /></AppLayout></ProtectedRoute>} />
       {/* Nexus RV */}
       <Route path="/rv" element={<ProtectedRoute adminOnly><AppLayout><RVDashboard /></AppLayout></ProtectedRoute>} />
+      <Route path="/rv/fontes-config" element={<ProtectedRoute adminOnly><AppLayout><RVFontesConfig /></AppLayout></ProtectedRoute>} />
       <Route path="/rv/calcular" element={<ProtectedRoute adminOnly><AppLayout><RVCalcular /></AppLayout></ProtectedRoute>} />
       {/* Rotas legadas redirecionam para o wizard unificado */}
       <Route path="/rv/indicadores" element={<Navigate to="/rv/calcular" />} />

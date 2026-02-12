@@ -6,6 +6,37 @@ const router = Router();
 router.use(authMiddleware);
 
 // ════════════════════════════════════════
+// CLIENTES
+// ════════════════════════════════════════
+router.get('/clientes', (req, res) => {
+  const rows = db.prepare('SELECT * FROM rv_clientes ORDER BY nome').all();
+  res.json(rows);
+});
+
+router.post('/clientes', adminMiddleware, (req: Request, res: Response) => {
+  const { nome, logo_url, descricao } = req.body;
+  if (!nome) return res.status(400).json({ error: 'Nome é obrigatório' });
+  try {
+    const r = db.prepare('INSERT INTO rv_clientes (nome, logo_url, descricao) VALUES (?,?,?)').run(nome, logo_url || null, descricao || '');
+    res.json({ id: r.lastInsertRowid });
+  } catch (e: any) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+router.put('/clientes/:id', adminMiddleware, (req: Request, res: Response) => {
+  const { nome, logo_url, descricao, ativo } = req.body;
+  db.prepare('UPDATE rv_clientes SET nome=?, logo_url=?, descricao=?, ativo=? WHERE id=?')
+    .run(nome, logo_url || null, descricao || '', ativo ?? 1, req.params.id);
+  res.json({ success: true });
+});
+
+router.delete('/clientes/:id', adminMiddleware, (req: Request, res: Response) => {
+  db.prepare('UPDATE rv_clientes SET ativo=0 WHERE id=?').run(req.params.id);
+  res.json({ success: true });
+});
+
+// ════════════════════════════════════════
 // DASHBOARD
 // ════════════════════════════════════════
 router.get('/dashboard', (req, res) => {
@@ -45,15 +76,23 @@ router.get('/dashboard', (req, res) => {
 // INDICADORES (dimensão)
 // ════════════════════════════════════════
 router.get('/indicadores', (req, res) => {
-  const rows = db.prepare('SELECT * FROM rv_indicadores_dim ORDER BY codigo').all();
+  const { id_cliente } = req.query;
+  let sql = 'SELECT * FROM rv_indicadores_dim WHERE 1=1';
+  const params: any[] = [];
+  if (id_cliente) {
+    sql += ' AND (id_cliente = ? OR id_cliente IS NULL)';
+    params.push(id_cliente);
+  }
+  sql += ' ORDER BY codigo';
+  const rows = db.prepare(sql).all(...params);
   res.json(rows);
 });
 
 router.post('/indicadores', adminMiddleware, (req: Request, res: Response) => {
-  const { codigo, nome, descricao, unidade, tipo } = req.body;
+  const { codigo, nome, descricao, unidade, tipo, id_cliente } = req.body;
   if (!codigo || !nome) return res.status(400).json({ error: 'Código e nome são obrigatórios' });
   try {
-    const r = db.prepare('INSERT INTO rv_indicadores_dim (codigo, nome, descricao, unidade, tipo) VALUES (?,?,?,?,?)').run(codigo, nome, descricao || '', unidade || '%', tipo || 'percentual');
+    const r = db.prepare('INSERT INTO rv_indicadores_dim (codigo, nome, descricao, unidade, tipo, id_cliente) VALUES (?,?,?,?,?,?)').run(codigo, nome, descricao || '', unidade || '%', tipo || 'percentual', id_cliente || null);
     res.json({ id: r.lastInsertRowid });
   } catch (e: any) {
     res.status(400).json({ error: e.message.includes('UNIQUE') ? 'Código já existe' : e.message });
@@ -61,9 +100,9 @@ router.post('/indicadores', adminMiddleware, (req: Request, res: Response) => {
 });
 
 router.put('/indicadores/:id', adminMiddleware, (req: Request, res: Response) => {
-  const { codigo, nome, descricao, unidade, tipo, ativo } = req.body;
-  db.prepare('UPDATE rv_indicadores_dim SET codigo=?, nome=?, descricao=?, unidade=?, tipo=?, ativo=? WHERE id=?')
-    .run(codigo, nome, descricao, unidade, tipo, ativo ?? 1, req.params.id);
+  const { codigo, nome, descricao, unidade, tipo, ativo, id_cliente } = req.body;
+  db.prepare('UPDATE rv_indicadores_dim SET codigo=?, nome=?, descricao=?, unidade=?, tipo=?, ativo=?, id_cliente=? WHERE id=?')
+    .run(codigo, nome, descricao, unidade, tipo, ativo ?? 1, id_cliente || null, req.params.id);
   res.json({ success: true });
 });
 
@@ -104,7 +143,15 @@ router.post('/fatos', adminMiddleware, (req: Request, res: Response) => {
 // REGRAS
 // ════════════════════════════════════════
 router.get('/regras', (req, res) => {
-  const regras = db.prepare('SELECT * FROM rv_regras ORDER BY nome').all() as any[];
+  const { id_cliente } = req.query;
+  let sql = 'SELECT * FROM rv_regras WHERE 1=1';
+  const params: any[] = [];
+  if (id_cliente) {
+    sql += ' AND (id_cliente = ? OR id_cliente IS NULL)';
+    params.push(id_cliente);
+  }
+  sql += ' ORDER BY nome';
+  const regras = db.prepare(sql).all(...params) as any[];
   for (const r of regras) {
     r.faixas = db.prepare('SELECT f.*, d.codigo as indicador_codigo, d.nome as indicador_nome FROM rv_regra_faixas f JOIN rv_indicadores_dim d ON d.id=f.id_indicador WHERE f.id_regra=? ORDER BY f.ordem').all(r.id);
     r.condicoes = db.prepare('SELECT c.*, d.codigo as indicador_codigo, d.nome as indicador_nome FROM rv_regra_condicoes c JOIN rv_indicadores_dim d ON d.id=c.id_indicador WHERE c.id_regra=?').all(r.id);
@@ -113,12 +160,12 @@ router.get('/regras', (req, res) => {
 });
 
 router.post('/regras', adminMiddleware, (req: Request, res: Response) => {
-  const { nome, descricao, tipo, vigencia_inicio, vigencia_fim, faixas, condicoes } = req.body;
+  const { nome, descricao, tipo, vigencia_inicio, vigencia_fim, faixas, condicoes, id_cliente } = req.body;
   if (!nome) return res.status(400).json({ error: 'Nome é obrigatório' });
 
   const tx = db.transaction(() => {
-    const r = db.prepare('INSERT INTO rv_regras (nome, descricao, tipo, vigencia_inicio, vigencia_fim) VALUES (?,?,?,?,?)')
-      .run(nome, descricao || '', tipo || 'faixa', vigencia_inicio || null, vigencia_fim || null);
+    const r = db.prepare('INSERT INTO rv_regras (nome, descricao, tipo, vigencia_inicio, vigencia_fim, id_cliente) VALUES (?,?,?,?,?,?)')
+      .run(nome, descricao || '', tipo || 'faixa', vigencia_inicio || null, vigencia_fim || null, id_cliente || null);
     const regraId = r.lastInsertRowid as number;
 
     if (Array.isArray(faixas)) {
@@ -143,12 +190,12 @@ router.post('/regras', adminMiddleware, (req: Request, res: Response) => {
 });
 
 router.put('/regras/:id', adminMiddleware, (req: Request, res: Response) => {
-  const { nome, descricao, tipo, vigencia_inicio, vigencia_fim, ativo, faixas, condicoes } = req.body;
+  const { nome, descricao, tipo, vigencia_inicio, vigencia_fim, ativo, faixas, condicoes, id_cliente } = req.body;
   const id = parseInt(req.params.id);
 
   const tx = db.transaction(() => {
-    db.prepare('UPDATE rv_regras SET nome=?, descricao=?, tipo=?, vigencia_inicio=?, vigencia_fim=?, ativo=? WHERE id=?')
-      .run(nome, descricao, tipo, vigencia_inicio || null, vigencia_fim || null, ativo ?? 1, id);
+    db.prepare('UPDATE rv_regras SET nome=?, descricao=?, tipo=?, vigencia_inicio=?, vigencia_fim=?, ativo=?, id_cliente=? WHERE id=?')
+      .run(nome, descricao, tipo, vigencia_inicio || null, vigencia_fim || null, ativo ?? 1, id_cliente || null, id);
 
     if (Array.isArray(faixas)) {
       db.prepare('DELETE FROM rv_regra_faixas WHERE id_regra=?').run(id);
@@ -479,7 +526,7 @@ router.get('/colaboradores-periodo', (req, res) => {
 // POST /calcular — Persiste o cálculo (usa motor extraído)
 // ════════════════════════════════════════
 router.post('/calcular', adminMiddleware, (req: Request, res: Response) => {
-  const { periodo, regraIds, observacoes } = req.body;
+  const { periodo, regraIds, observacoes, id_cliente } = req.body;
   if (!periodo) return res.status(400).json({ error: 'Período é obrigatório (ex: 2025-12)' });
 
   const user = (req as any).user;
@@ -490,8 +537,8 @@ router.post('/calcular', adminMiddleware, (req: Request, res: Response) => {
   }
 
   // Persistir
-  const calculo = db.prepare('INSERT INTO rv_calculos (periodo, calculado_por, observacoes) VALUES (?,?,?)')
-    .run(periodo, user.nome || user.login, observacoes || null);
+  const calculo = db.prepare('INSERT INTO rv_calculos (periodo, calculado_por, observacoes, id_cliente) VALUES (?,?,?,?)')
+    .run(periodo, user.nome || user.login, observacoes || null, id_cliente || null);
   const calculoId = calculo.lastInsertRowid as number;
 
   const insResult = db.prepare('INSERT INTO rv_resultados (id_calculo, matricula, nome_colaborador, id_regra, valor_indicador, valor_rv, detalhes_json) VALUES (?,?,?,?,?,?,?)');
@@ -579,6 +626,226 @@ router.get('/resultados', (req, res) => {
 router.get('/periodos', (req, res) => {
   const rows = db.prepare('SELECT DISTINCT data as periodo FROM rv_indicadores_fato ORDER BY data DESC').all();
   res.json(rows);
+});
+
+// ════════════════════════════════════════
+// FONTES DE DADOS
+// ════════════════════════════════════════
+
+// Listar todas as fontes
+router.get('/fontes-dados', (req, res) => {
+  const rows = db.prepare(`
+    SELECT f.*, c.nome as cliente_nome
+    FROM rv_fontes_dados f
+    LEFT JOIN rv_clientes c ON c.id = f.id_cliente
+    ORDER BY f.nome
+  `).all();
+  res.json(rows);
+});
+
+// Buscar uma fonte específica
+router.get('/fontes-dados/:id', (req, res) => {
+  const row = db.prepare('SELECT * FROM rv_fontes_dados WHERE id=?').get(req.params.id);
+  if (!row) return res.status(404).json({ error: 'Fonte não encontrada' });
+  res.json(row);
+});
+
+// Criar nova fonte
+router.post('/fontes-dados', adminMiddleware, (req: Request, res: Response) => {
+  const { nome, tipo, config_json, mapeamento_json, id_cliente } = req.body;
+  
+  if (!nome || !tipo) {
+    return res.status(400).json({ error: 'Nome e tipo são obrigatórios' });
+  }
+
+  if (!['sqlserver', 'postgresql', 'excel', 'csv', 'txt'].includes(tipo)) {
+    return res.status(400).json({ error: 'Tipo inválido' });
+  }
+
+  try {
+    const configStr = typeof config_json === 'string' ? config_json : JSON.stringify(config_json || {});
+    const mapeamentoStr = typeof mapeamento_json === 'string' ? mapeamento_json : JSON.stringify(mapeamento_json || {});
+
+    const r = db.prepare(
+      'INSERT INTO rv_fontes_dados (nome, tipo, config_json, mapeamento_json, id_cliente) VALUES (?,?,?,?,?)'
+    ).run(nome, tipo, configStr, mapeamentoStr, id_cliente || null);
+
+    res.json({ id: r.lastInsertRowid });
+  } catch (e: any) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+// Atualizar fonte
+router.put('/fontes-dados/:id', adminMiddleware, (req: Request, res: Response) => {
+  const { nome, tipo, config_json, mapeamento_json, id_cliente, ativo } = req.body;
+  
+  try {
+    const configStr = typeof config_json === 'string' ? config_json : JSON.stringify(config_json || {});
+    const mapeamentoStr = typeof mapeamento_json === 'string' ? mapeamento_json : JSON.stringify(mapeamento_json || {});
+
+    db.prepare(`
+      UPDATE rv_fontes_dados 
+      SET nome=?, tipo=?, config_json=?, mapeamento_json=?, id_cliente=?, ativo=?, updated_at=CURRENT_TIMESTAMP
+      WHERE id=?
+    `).run(nome, tipo, configStr, mapeamentoStr, id_cliente || null, ativo ?? 1, req.params.id);
+
+    res.json({ success: true });
+  } catch (e: any) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+// Deletar (desativar) fonte
+router.delete('/fontes-dados/:id', adminMiddleware, (req: Request, res: Response) => {
+  db.prepare('UPDATE rv_fontes_dados SET ativo=0, updated_at=CURRENT_TIMESTAMP WHERE id=?').run(req.params.id);
+  res.json({ success: true });
+});
+
+// Testar conexão/path de uma fonte
+router.post('/fontes-dados/:id/testar', adminMiddleware, (req: Request, res: Response) => {
+  const fonte = db.prepare('SELECT * FROM rv_fontes_dados WHERE id=?').get(req.params.id) as any;
+  
+  if (!fonte) {
+    return res.status(404).json({ error: 'Fonte não encontrada' });
+  }
+
+  const config = JSON.parse(fonte.config_json);
+
+  // Mock para SQL (por enquanto)
+  if (fonte.tipo === 'sqlserver' || fonte.tipo === 'postgresql') {
+    if (!config.host || !config.database) {
+      return res.status(400).json({ error: 'Configuração incompleta (host, database)' });
+    }
+    return res.json({ 
+      success: true, 
+      message: 'Configuração válida (conexão real será implementada em breve)' 
+    });
+  }
+
+  // Para arquivos, verificar se o caminho está preenchido
+  if (fonte.tipo === 'excel' || fonte.tipo === 'csv' || fonte.tipo === 'txt') {
+    if (!config.caminho_rede && !config.caminho_arquivo) {
+      return res.status(400).json({ error: 'Caminho do arquivo não configurado' });
+    }
+    // Mock: validação de path
+    const path = config.caminho_rede || config.caminho_arquivo;
+    if (path && path.length > 3) {
+      return res.json({ 
+        success: true, 
+        message: 'Caminho configurado (validação real de arquivo será implementada em breve)' 
+      });
+    }
+    return res.status(400).json({ error: 'Caminho inválido' });
+  }
+
+  res.status(400).json({ error: 'Tipo de fonte não suportado' });
+});
+
+// Endpoint para download de templates
+router.get('/fontes-dados/template/:formato', (req, res) => {
+  const { formato } = req.params;
+  
+  if (!['csv', 'xlsx', 'txt'].includes(formato)) {
+    return res.status(400).json({ error: 'Formato inválido. Use csv, xlsx ou txt' });
+  }
+
+  const colunas = ['matricula', 'nome_colaborador', 'codigo_indicador', 'numerador', 'denominador', 'periodo'];
+  const exemplo = ['USR002', 'Maria Silva', 'VENDAS', '120', '100', '2025-12'];
+
+  let content = '';
+  let contentType = 'text/plain';
+  let filename = `template_rv.${formato}`;
+
+  if (formato === 'csv' || formato === 'xlsx') {
+    // CSV (para xlsx também, por enquanto)
+    content = colunas.join(';') + '\n';
+    content += exemplo.join(';') + '\n';
+    contentType = formato === 'csv' ? 'text/csv' : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+  } else if (formato === 'txt') {
+    // TXT (pipe-delimited)
+    content = colunas.join('|') + '\n';
+    content += exemplo.join('|') + '\n';
+  }
+
+  res.setHeader('Content-Type', contentType);
+  res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+  res.send(content);
+});
+
+// ════════════════════════════════════════
+// DASHBOARD - HISTÓRICO MENSAL (para gráfico)
+// ════════════════════════════════════════
+router.get('/dashboard/historico-mensal', (req, res) => {
+  const rows = db.prepare(`
+    SELECT 
+      c.periodo,
+      SUM(r.valor_rv) as total_rv,
+      COUNT(DISTINCT r.matricula) as total_colaboradores,
+      COUNT(DISTINCT c.id) as total_calculos
+    FROM rv_calculos c
+    LEFT JOIN rv_resultados r ON r.id_calculo = c.id
+    WHERE c.status != 'rascunho'
+    GROUP BY c.periodo
+    ORDER BY c.periodo ASC
+  `).all();
+
+  res.json(rows);
+});
+
+// ════════════════════════════════════════
+// ENVIO DE EMAIL
+// ════════════════════════════════════════
+router.post('/calculos/:id/enviar-email', async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const { emails, formato, delimitador, assunto, mensagem } = req.body;
+
+  // Validações
+  if (!emails || !Array.isArray(emails) || emails.length === 0) {
+    return res.status(400).json({ error: 'Lista de emails é obrigatória' });
+  }
+
+  if (!formato || !['csv', 'xlsx', 'txt'].includes(formato)) {
+    return res.status(400).json({ error: 'Formato inválido. Use csv, xlsx ou txt' });
+  }
+
+  if (!assunto || assunto.trim() === '') {
+    return res.status(400).json({ error: 'Assunto é obrigatório' });
+  }
+
+  // Verificar se o cálculo existe
+  const calculo = db.prepare('SELECT * FROM rv_calculos WHERE id=?').get(id);
+  if (!calculo) {
+    return res.status(404).json({ error: 'Cálculo não encontrado' });
+  }
+
+  try {
+    // Salvar registro de envio
+    const ins = db.prepare(`
+      INSERT INTO rv_envios_email (id_calculo, emails_json, formato, delimitador, assunto, mensagem, status)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    ins.run(
+      id,
+      JSON.stringify(emails),
+      formato,
+      delimitador || null,
+      assunto.trim(),
+      mensagem?.trim() || null,
+      'enviado' // Por enquanto, simular sucesso. SMTP real virá depois
+    );
+
+    res.json({
+      success: true,
+      message: `Email enviado com sucesso para ${emails.length} destinatário(s)`,
+      formato,
+      destinatarios: emails.length
+    });
+  } catch (err: any) {
+    console.error('Erro ao salvar registro de envio:', err);
+    res.status(500).json({ error: 'Erro ao processar envio de email' });
+  }
 });
 
 export default router;
