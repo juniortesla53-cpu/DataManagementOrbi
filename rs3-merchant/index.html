@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RS3 Merchant Pro - Grand Exchange Tracker</title>
+    <meta name="description" content="Ferramenta profissional para merchant flipping no RuneScape 3. Análise de preços, tendências e oportunidades do Grand Exchange.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="app">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="logo">
+                <span class="logo-icon">⚔️</span>
+                <span class="logo-text">RS3 Merchant</span>
+            </div>
+            
+            <nav class="nav">
+                <a href="#" class="nav-item active" data-page="dashboard">
+                    <span class="nav-icon">📊</span>
+                    <span>Dashboard</span>
+                </a>
+                <a href="#" class="nav-item" data-page="opportunities">
+                    <span class="nav-icon">💰</span>
+                    <span>Oportunidades</span>
+                </a>
+                <a href="#" class="nav-item" data-page="watchlist">
+                    <span class="nav-icon">⭐</span>
+                    <span>Watchlist</span>
+                </a>
+                <a href="#" class="nav-item" data-page="calculator">
+                    <span class="nav-icon">🧮</span>
+                    <span>Calculadora</span>
+                </a>
+                <a href="#" class="nav-item" data-page="history">
+                    <span class="nav-icon">📜</span>
+                    <span>Histórico</span>
+                </a>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="update-status">
+                    <span class="status-dot"></span>
+                    <span id="lastUpdate">Atualizando...</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main">
+            <!-- Header -->
+            <header class="header">
+                <div class="search-container">
+                    <input type="text" id="searchInput" placeholder="Buscar item..." class="search-input">
+                    <span class="search-icon">🔍</span>
+                </div>
+                
+                <div class="header-stats">
+                    <div class="stat-card mini">
+                        <span class="stat-label">Itens Rastreados</span>
+                        <span class="stat-value" id="totalItems">0</span>
+                    </div>
+                    <div class="stat-card mini">
+                        <span class="stat-label">Oportunidades</span>
+                        <span class="stat-value highlight" id="opportunities">0</span>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Dashboard Page -->
+            <section id="page-dashboard" class="page active">
+                <div class="page-header">
+                    <h1>Dashboard</h1>
+                    <div class="filters">
+                        <select id="categoryFilter" class="filter-select">
+                            <option value="all">Todas Categorias</option>
+                            <option value="melee">Melee Weapons</option>
+                            <option value="mage">Mage</option>
+                            <option value="range">Range</option>
+                            <option value="armour">Armour</option>
+                            <option value="rune">Runes</option>
+                            <option value="potion">Potions</option>
+                            <option value="food">Food</option>
+                            <option value="herb">Herblore</option>
+                            <option value="mining">Mining/Smithing</option>
+                            <option value="craft">Crafting</option>
+                            <option value="farm">Farming</option>
+                            <option value="summon">Summoning</option>
+                            <option value="prayer">Prayer</option>
+                            <option value="construction">Construction</option>
+                        </select>
+                        <select id="sortFilter" class="filter-select">
+                            <option value="name">Nome (A-Z)</option>
+                            <option value="price-desc">Maior Preço</option>
+                            <option value="price-asc">Menor Preço</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Stats Overview -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon green">📈</div>
+                        <div class="stat-info">
+                            <span class="stat-label">Em Alta (24h)</span>
+                            <span class="stat-value" id="itemsUp">0</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon red">📉</div>
+                        <div class="stat-info">
+                            <span class="stat-label">Em Baixa (24h)</span>
+                            <span class="stat-value" id="itemsDown">0</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon gold">💎</div>
+                        <div class="stat-info">
+                            <span class="stat-label">Melhor Margem</span>
+                            <span class="stat-value" id="bestMargin">0%</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon purple">🔥</div>
+                        <div class="stat-info">
+                            <span class="stat-label">Mais Negociado</span>
+                            <span class="stat-value" id="mostTraded">-</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Items Table -->
+                <div class="table-container">
+                    <table class="items-table">
+                        <thead>
+                            <tr>
+                                <th>Item</th>
+                                <th>Preço Atual</th>
+                                <th>Compra (Bid)</th>
+                                <th>Venda (Ask)</th>
+                                <th>Margem</th>
+                                <th>Tendência 30d</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="itemsTableBody">
+                            <tr class="loading-row">
+                                <td colspan="7">
+                                    <div class="loading-spinner"></div>
+                                    <span>Carregando dados do Grand Exchange...</span>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Pagination -->
+                <div id="pagination" class="pagination"></div>
+            </section>
+
+            <!-- Opportunities Page -->
+            <section id="page-opportunities" class="page">
+                <div class="page-header">
+                    <h1>💰 Oportunidades de Flip</h1>
+                    <p class="page-subtitle">Itens com melhor potencial de lucro agora</p>
+                </div>
+
+                <div class="opportunities-filters">
+                    <div class="filter-group">
+                        <label>Capital Disponível (GP)</label>
+                        <input type="number" id="capitalInput" placeholder="Ex: 10000000" class="filter-input">
+                    </div>
+                    <div class="filter-group">
+                        <label>Margem Mínima</label>
+                        <select id="minMarginFilter" class="filter-select">
+                            <option value="1">1%+</option>
+                            <option value="2" selected>2%+</option>
+                            <option value="5">5%+</option>
+                            <option value="10">10%+</option>
+                        </select>
+                    </div>
+                    <button id="findOpportunities" class="btn-primary">Buscar Oportunidades</button>
+                </div>
+
+                <div class="opportunities-grid" id="opportunitiesGrid">
+                    <!-- Cards will be inserted here -->
+                </div>
+            </section>
+
+            <!-- Watchlist Page -->
+            <section id="page-watchlist" class="page">
+                <div class="page-header">
+                    <h1>⭐ Sua Watchlist</h1>
+                    <p class="page-subtitle">Itens que você está monitorando</p>
+                </div>
+
+                <div class="watchlist-container" id="watchlistContainer">
+                    <div class="empty-state">
+                        <span class="empty-icon">📋</span>
+                        <h3>Watchlist vazia</h3>
+                        <p>Adicione itens clicando no ⭐ na tabela do Dashboard</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Calculator Page -->
+            <section id="page-calculator" class="page">
+                <div class="page-header">
+                    <h1>🧮 Calculadora de Lucro</h1>
+                    <p class="page-subtitle">Calcule seu lucro potencial em flips</p>
+                </div>
+
+                <div class="calculator-container">
+                    <div class="calc-form">
+                        <div class="calc-group">
+                            <label>Item</label>
+                            <input type="text" id="calcItem" placeholder="Nome do item" class="calc-input">
+                        </div>
+                        <div class="calc-row">
+                            <div class="calc-group">
+                                <label>Preço de Compra (GP)</label>
+                                <input type="number" id="calcBuyPrice" placeholder="0" class="calc-input">
+                            </div>
+                            <div class="calc-group">
+                                <label>Preço de Venda (GP)</label>
+                                <input type="number" id="calcSellPrice" placeholder="0" class="calc-input">
+                            </div>
+                        </div>
+                        <div class="calc-group">
+                            <label>Quantidade</label>
+                            <input type="number" id="calcQuantity" placeholder="1" value="1" class="calc-input">
+                        </div>
+                        <button id="calculateBtn" class="btn-primary">Calcular Lucro</button>
+                    </div>
+
+                    <div class="calc-results" id="calcResults">
+                        <div class="result-card">
+                            <span class="result-label">Investimento Total</span>
+                            <span class="result-value" id="resultInvestment">0 GP</span>
+                        </div>
+                        <div class="result-card">
+                            <span class="result-label">Retorno Total</span>
+                            <span class="result-value" id="resultReturn">0 GP</span>
+                        </div>
+                        <div class="result-card highlight">
+                            <span class="result-label">Lucro Líquido</span>
+                            <span class="result-value" id="resultProfit">0 GP</span>
+                        </div>
+                        <div class="result-card">
+                            <span class="result-label">Margem</span>
+                            <span class="result-value" id="resultMargin">0%</span>
+                        </div>
+                        <div class="result-card">
+                            <span class="result-label">Taxa GE (2%)</span>
+                            <span class="result-value" id="resultTax">0 GP</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- History Page -->
+            <section id="page-history" class="page">
+                <div class="page-header">
+                    <h1>📜 Histórico de Flips</h1>
+                    <p class="page-subtitle">Registre e acompanhe seus trades</p>
+                </div>
+
+                <div class="history-actions">
+                    <button id="addFlipBtn" class="btn-primary">+ Registrar Flip</button>
+                    <div class="history-stats">
+                        <div class="history-stat">
+                            <span class="label">Total de Lucro:</span>
+                            <span class="value positive" id="totalProfit">0 GP</span>
+                        </div>
+                        <div class="history-stat">
+                            <span class="label">Flips Realizados:</span>
+                            <span class="value" id="totalFlips">0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="history-list" id="historyList">
+                    <div class="empty-state">
+                        <span class="empty-icon">📊</span>
+                        <h3>Nenhum flip registrado</h3>
+                        <p>Clique em "Registrar Flip" para começar a rastrear seus lucros</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Item Detail Modal -->
+            <div class="modal" id="itemModal">
+                <div class="modal-content">
+                    <button class="modal-close" id="closeModal">&times;</button>
+                    <div class="modal-header">
+                        <img id="modalItemIcon" src="" alt="" class="modal-icon">
+                        <div>
+                            <h2 id="modalItemName">Item Name</h2>
+                            <span id="modalItemCategory" class="modal-category">Category</span>
+                        </div>
+                    </div>
+                    <div class="modal-body">
+                        <div class="modal-stats">
+                            <div class="modal-stat">
+                                <span class="label">Preço Atual</span>
+                                <span class="value" id="modalPrice">0</span>
+                            </div>
+                            <div class="modal-stat">
+                                <span class="label">Tendência Hoje</span>
+                                <span class="value" id="modalToday">0</span>
+                            </div>
+                            <div class="modal-stat">
+                                <span class="label">30 Dias</span>
+                                <span class="value" id="modal30d">0%</span>
+                            </div>
+                            <div class="modal-stat">
+                                <span class="label">90 Dias</span>
+                                <span class="value" id="modal90d">0%</span>
+                            </div>
+                        </div>
+                        <div class="modal-chart-container">
+                            <canvas id="priceChart"></canvas>
+                        </div>
+                        <div class="modal-actions">
+                            <button class="btn-secondary" id="modalAddWatchlist">⭐ Adicionar à Watchlist</button>
+                            <button class="btn-primary" id="modalCalcFlip">🧮 Calcular Flip</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Add Flip Modal -->
+            <div class="modal" id="addFlipModal">
+                <div class="modal-content small">
+                    <button class="modal-close" id="closeFlipModal">&times;</button>
+                    <h2>Registrar Flip</h2>
+                    <form id="flipForm">
+                        <div class="form-group">
+                            <label>Item</label>
+                            <input type="text" id="flipItem" required class="form-input">
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Compra (GP)</label>
+                                <input type="number" id="flipBuy" required class="form-input">
+                            </div>
+                            <div class="form-group">
+                                <label>Venda (GP)</label>
+                                <input type="number" id="flipSell" required class="form-input">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Quantidade</label>
+                            <input type="number" id="flipQty" value="1" required class="form-input">
+                        </div>
+                        <button type="submit" class="btn-primary full-width">Salvar Flip</button>
+                    </form>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
