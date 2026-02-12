@@ -24,7 +24,7 @@ const STEPS: StepConfig[] = [
 export default function RVCalcular() {
   // Wizard state
   const [currentStep, setCurrentStep] = useState(0);
-  const [clienteSelecionado, setClienteSelecionado] = useState<number | null>(null);
+  const [clientesSelecionados, setClientesSelecionados] = useState<number[]>([]);
   const [periodo, setPeriodo] = useState('');
   const [regrasSelecionadas, setRegrasSelecionadas] = useState<number[]>([]);
   const [simulacao, setSimulacao] = useState<any>(null);
@@ -48,6 +48,7 @@ export default function RVCalcular() {
       if (step === 0) {
         setRegrasSelecionadas([]);
         setPeriodo('');
+        setClientesSelecionados([]);
       }
       setCurrentStep(step);
     }
@@ -109,21 +110,21 @@ export default function RVCalcular() {
       <div>
         {currentStep === 0 && (
           <StepCliente
-            clienteSelecionado={clienteSelecionado}
-            setClienteSelecionado={setClienteSelecionado}
+            clientesSelecionados={clientesSelecionados}
+            setClientesSelecionados={setClientesSelecionados}
             onNext={nextStep}
           />
         )}
         {currentStep === 1 && (
           <StepIndicadores
-            clienteId={clienteSelecionado}
+            clienteIds={clientesSelecionados}
             onNext={nextStep}
             onBack={prevStep}
           />
         )}
         {currentStep === 2 && (
           <StepRegras
-            clienteId={clienteSelecionado}
+            clienteIds={clientesSelecionados}
             regrasSelecionadas={regrasSelecionadas}
             setRegrasSelecionadas={setRegrasSelecionadas}
             onNext={nextStep}
@@ -150,7 +151,7 @@ export default function RVCalcular() {
         )}
         {currentStep === 5 && (
           <StepConfirmacao
-            clienteId={clienteSelecionado}
+            clienteId={clientesSelecionados[0] || null}
             periodo={periodo}
             regrasSelecionadas={regrasSelecionadas}
             simulacao={simulacao}

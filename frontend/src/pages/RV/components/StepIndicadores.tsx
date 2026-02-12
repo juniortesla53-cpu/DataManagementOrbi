@@ -1,36 +1,46 @@
 import { useState, useEffect } from 'react';
-import { Target, Plus, Edit2, Trash2, X, Loader2, ChevronRight, ChevronLeft, AlertCircle, Power } from 'lucide-react';
+import { Target, Plus, Edit2, Trash2, X, Loader2, ChevronRight, ChevronLeft, AlertCircle, Power, Database } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import api from '../../../api';
 
 interface Props {
-  clienteId: number | null;
+  clienteIds: number[];
   onNext: () => void;
   onBack: () => void;
 }
 
-export default function StepIndicadores({ clienteId, onNext, onBack }: Props) {
+export default function StepIndicadores({ clienteIds, onNext, onBack }: Props) {
+  const navigate = useNavigate();
   const [indicadores, setIndicadores] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [dbError, setDbError] = useState(false);
   const [modal, setModal] = useState<any>(null);
   const [form, setForm] = useState({ codigo: '', nome: '', descricao: '', unidade: '%', tipo: 'percentual' });
   const [saving, setSaving] = useState(false);
 
   const fetchIndicadores = async () => {
     setLoading(true);
+    setDbError(false);
     try {
-      const params = clienteId ? `?id_cliente=${clienteId}` : '';
+      const params = clienteIds.length > 0 ? `?id_cliente=${clienteIds[0]}` : '';
       const { data } = await api.get(`/rv/indicadores${params}`);
       setIndicadores(data);
       setError(null);
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Erro ao carregar indicadores');
+      const msg = err.response?.data?.error || err.message || '';
+      if (msg.includes('no such column') || msg.includes('SQLITE_ERROR')) {
+        setDbError(true);
+        setError('A estrutura do banco de dados precisa ser atualizada. Reinicie o servidor backend.');
+      } else {
+        setError(msg || 'Erro ao carregar indicadores');
+      }
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => { fetchIndicadores(); }, [clienteId]);
+  useEffect(() => { fetchIndicadores(); }, [clienteIds]);
 
   const ativos = indicadores.filter(i => i.ativo);
 
@@ -48,7 +58,7 @@ export default function StepIndicadores({ clienteId, onNext, onBack }: Props) {
     if (!form.codigo || !form.nome) return;
     setSaving(true);
     try {
-      const payload = { ...form, id_cliente: clienteId };
+      const payload = { ...form, id_cliente: clienteIds[0] || null };
       if (modal === 'new') {
         await api.post('/rv/indicadores', payload);
       } else {
@@ -74,7 +84,7 @@ export default function StepIndicadores({ clienteId, onNext, onBack }: Props) {
   const toggleAtivo = async (ind: any) => {
     const novoStatus = ind.ativo ? 0 : 1;
     try {
-      await api.put(`/rv/indicadores/${ind.id}`, { ...ind, ativo: novoStatus, id_cliente: clienteId });
+      await api.put(`/rv/indicadores/${ind.id}`, { ...ind, ativo: novoStatus, id_cliente: clienteIds[0] || null });
       fetchIndicadores();
     } catch (err: any) {
       alert(err.response?.data?.error || 'Erro ao alterar status');
@@ -91,9 +101,25 @@ export default function StepIndicadores({ clienteId, onNext, onBack }: Props) {
 
   if (error) {
     return (
-      <div className="card p-8 text-center">
-        <AlertCircle size={32} className="text-nexus-danger mx-auto mb-3" />
-        <p className="text-sm text-nexus-text font-medium">{error}</p>
+      <div className="card p-10 text-center space-y-4">
+        <div className={`w-16 h-16 rounded-2xl mx-auto flex items-center justify-center ${dbError ? 'bg-amber-100' : 'bg-red-100'}`}>
+          {dbError ? <Database size={28} className="text-amber-600" /> : <AlertCircle size={28} className="text-red-500" />}
+        </div>
+        <div>
+          <p className="text-base font-bold text-nexus-text mb-1">{dbError ? 'Configuração necessária' : 'Erro ao carregar'}</p>
+          <p className="text-sm text-nexus-muted">{error}</p>
+        </div>
+        {dbError && (
+          <button
+            onClick={() => navigate('/rv/fontes-config')}
+            className="inline-flex items-center gap-2 px-5 py-2.5 btn-gradient rounded-xl text-sm font-semibold"
+          >
+            <Database size={16} /> Ir para Fontes de Dados
+          </button>
+        )}
+        <button onClick={onBack} className="block mx-auto text-xs text-nexus-muted hover:text-nexus-text underline">
+          ← Voltar para seleção de cliente
+        </button>
       </div>
     );
   }

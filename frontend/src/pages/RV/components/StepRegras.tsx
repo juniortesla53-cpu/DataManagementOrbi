@@ -1,20 +1,23 @@
 import { useState, useEffect } from 'react';
-import { Settings2, Plus, Edit2, Trash2, X, Loader2, ChevronRight, ChevronLeft, ChevronDown, ChevronUp, CheckSquare, Square, AlertCircle, Power } from 'lucide-react';
+import { Settings2, Plus, Edit2, Trash2, X, Loader2, ChevronRight, ChevronLeft, ChevronDown, ChevronUp, CheckSquare, Square, AlertCircle, Power, Database } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import api from '../../../api';
 
 interface Props {
-  clienteId: number | null;
+  clienteIds: number[];
   regrasSelecionadas: number[];
   setRegrasSelecionadas: (r: number[]) => void;
   onNext: () => void;
   onBack: () => void;
 }
 
-export default function StepRegras({ clienteId, regrasSelecionadas, setRegrasSelecionadas, onNext, onBack }: Props) {
+export default function StepRegras({ clienteIds, regrasSelecionadas, setRegrasSelecionadas, onNext, onBack }: Props) {
+  const navigate = useNavigate();
   const [regras, setRegras] = useState<any[]>([]);
   const [indicadores, setIndicadores] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [dbError, setDbError] = useState(false);
   const [expanded, setExpanded] = useState<number | null>(null);
   const [modal, setModal] = useState<any>(null);
   const [saving, setSaving] = useState(false);
@@ -28,20 +31,27 @@ export default function StepRegras({ clienteId, regrasSelecionadas, setRegrasSel
 
   const fetchData = async () => {
     setLoading(true);
+    setDbError(false);
     try {
-      const params = clienteId ? `?id_cliente=${clienteId}` : '';
+      const params = clienteIds.length > 0 ? `?id_cliente=${clienteIds[0]}` : '';
       const [regrasRes, indRes] = await Promise.all([api.get(`/rv/regras${params}`), api.get(`/rv/indicadores${params}`)]);
       setRegras(regrasRes.data);
       setIndicadores(indRes.data.filter((i: any) => i.ativo));
       setError(null);
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Erro ao carregar');
+      const msg = err.response?.data?.error || err.message || '';
+      if (msg.includes('no such column') || msg.includes('SQLITE_ERROR')) {
+        setDbError(true);
+        setError('A estrutura do banco de dados precisa ser atualizada. Reinicie o servidor backend.');
+      } else {
+        setError(msg || 'Erro ao carregar');
+      }
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => { fetchData(); }, [clienteId]);
+  useEffect(() => { fetchData(); }, [clienteIds]);
 
   // Auto-selecionar todas as regras ativas na primeira carga
   useEffect(() => {
@@ -93,7 +103,7 @@ export default function StepRegras({ clienteId, regrasSelecionadas, setRegrasSel
     try {
       const payload = {
         ...form,
-        id_cliente: clienteId,
+        id_cliente: clienteIds[0] || null,
         faixas: form.faixas.map(f => ({ ...f, id_indicador: parseInt(f.id_indicador as any), faixa_min: parseFloat(f.faixa_min as any), faixa_max: parseFloat(f.faixa_max as any), valor_payout: parseFloat(f.valor_payout as any) })),
         condicoes: form.condicoes.map(c => ({ ...c, id_indicador: parseInt(c.id_indicador as any), valor_referencia: parseFloat(c.valor_referencia as any) })),
       };
@@ -126,7 +136,7 @@ export default function StepRegras({ clienteId, regrasSelecionadas, setRegrasSel
       await api.put(`/rv/regras/${regra.id}`, {
         ...regra,
         ativo: novoStatus,
-        id_cliente: clienteId,
+        id_cliente: clienteIds[0] || null,
         faixas: regra.faixas,
         condicoes: regra.condicoes,
       });
@@ -145,10 +155,25 @@ export default function StepRegras({ clienteId, regrasSelecionadas, setRegrasSel
 
   if (error) {
     return (
-      <div className="card p-8 text-center">
-        <AlertCircle size={32} className="text-nexus-danger mx-auto mb-3" />
-        <p className="text-sm text-nexus-text font-medium">{error}</p>
-        <button onClick={onBack} className="mt-4 text-sm text-nexus-purple hover:underline">← Voltar</button>
+      <div className="card p-10 text-center space-y-4">
+        <div className={`w-16 h-16 rounded-2xl mx-auto flex items-center justify-center ${dbError ? 'bg-amber-100' : 'bg-red-100'}`}>
+          {dbError ? <Database size={28} className="text-amber-600" /> : <AlertCircle size={28} className="text-red-500" />}
+        </div>
+        <div>
+          <p className="text-base font-bold text-nexus-text mb-1">{dbError ? 'Configuração necessária' : 'Erro ao carregar'}</p>
+          <p className="text-sm text-nexus-muted">{error}</p>
+        </div>
+        {dbError && (
+          <button
+            onClick={() => navigate('/rv/fontes-config')}
+            className="inline-flex items-center gap-2 px-5 py-2.5 btn-gradient rounded-xl text-sm font-semibold"
+          >
+            <Database size={16} /> Ir para Fontes de Dados
+          </button>
+        )}
+        <button onClick={onBack} className="block mx-auto text-xs text-nexus-muted hover:text-nexus-text underline">
+          ← Voltar
+        </button>
       </div>
     );
   }

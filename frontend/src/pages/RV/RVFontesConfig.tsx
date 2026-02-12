@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useApi } from '../../hooks/useApi';
-import { Database, Plus, Edit2, Trash2, TestTube, Download, X, Server, FileSpreadsheet, FileText, AlertCircle, CheckCircle, Loader2, Info } from 'lucide-react';
+import { Database, Plus, Edit2, Trash2, TestTube, Download, X, Server, FileSpreadsheet, FileText, AlertCircle, CheckCircle, Loader2, Info, FolderOpen, Upload } from 'lucide-react';
 import api from '../../api';
 
 interface FonteDados {
@@ -354,174 +354,291 @@ WHERE periodo = '2025-12'`}
         )}
       </div>
 
-      {/* Modal de criação/edição */}
+      {/* Modal de criação/edição — Rebrand */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 bg-white border-b border-nexus-border p-4 flex items-center justify-between">
-              <h2 className="text-xl font-bold text-nexus-text">{editingFonte ? 'Editar Fonte' : 'Nova Fonte'}</h2>
-              <button onClick={() => setShowModal(false)} className="p-1 rounded hover:bg-nexus-bg">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            {/* Header com gradiente */}
+            <div className="sticky top-0 z-10 bg-gradient-to-r from-indigo-600 to-purple-600 p-5 rounded-t-2xl flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
+                  <Database size={22} className="text-white" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold text-white">{editingFonte ? 'Editar Fonte de Dados' : 'Nova Fonte de Dados'}</h2>
+                  <p className="text-xs text-white/70">Configure a conexão com sua fonte de dados externa</p>
+                </div>
+              </div>
+              <button onClick={() => setShowModal(false)} className="p-2 rounded-xl hover:bg-white/10 text-white transition-colors">
                 <X size={20} />
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="p-6 space-y-6">
-              {/* Informações Básicas */}
+            <form onSubmit={handleSubmit} className="p-6 space-y-8">
+              {/* Step 1 — Informações Básicas */}
               <div className="space-y-4">
-                <h3 className="font-semibold text-nexus-text border-b pb-2">Informações Básicas</h3>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold text-sm">1</div>
+                  <h3 className="text-base font-bold text-nexus-text">Informações Básicas</h3>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-nexus-text mb-1">Nome da Fonte *</label>
+                    <label className="block text-xs text-nexus-muted mb-1.5 font-semibold uppercase tracking-wide">Nome da Fonte *</label>
                     <input
                       type="text"
                       required
                       value={formData.nome}
                       onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
-                      className="input w-full"
+                      className="w-full px-4 py-2.5 bg-nexus-bg border border-nexus-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-nexus-purple/30"
                       placeholder="Ex: Base de Vendas SQL"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-nexus-text mb-1">Tipo *</label>
-                    <select
-                      required
-                      value={formData.tipo}
-                      onChange={(e) => setFormData({ ...formData, tipo: e.target.value as FonteDados['tipo'] })}
-                      className="input w-full"
-                    >
-                      {TIPOS_FONTE.map(t => (
-                        <option key={t.value} value={t.value}>{t.label}</option>
-                      ))}
-                    </select>
+                    <label className="block text-xs text-nexus-muted mb-1.5 font-semibold uppercase tracking-wide">Tipo da Fonte *</label>
+                    <div className="grid grid-cols-5 gap-2">
+                      {TIPOS_FONTE.map(t => {
+                        const Icon = t.icon;
+                        const isSelected = formData.tipo === t.value;
+                        return (
+                          <button
+                            key={t.value}
+                            type="button"
+                            onClick={() => setFormData({ ...formData, tipo: t.value as FonteDados['tipo'] })}
+                            className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 transition-all text-xs font-semibold ${
+                              isSelected
+                                ? 'border-nexus-purple bg-purple-50 text-nexus-purple shadow-md'
+                                : 'border-nexus-border bg-white text-nexus-muted hover:border-nexus-purple/30'
+                            }`}
+                          >
+                            <Icon size={20} />
+                            <span>{t.label}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
                 </div>
               </div>
 
-              {/* Configuração por tipo */}
+              {/* Step 2 — Configuração de Conexão */}
               <div className="space-y-4">
-                <h3 className="font-semibold text-nexus-text border-b pb-2">Configuração de Conexão</h3>
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold text-sm">2</div>
+                  <h3 className="text-base font-bold text-nexus-text">Configuração de Conexão</h3>
+                </div>
 
                 {(formData.tipo === 'sqlserver' || formData.tipo === 'postgresql') && (
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-nexus-text mb-1">Host</label>
-                      <input type="text" value={formData.config.host} onChange={(e) => setFormData({ ...formData, config: { ...formData.config, host: e.target.value } })} className="input w-full" placeholder="localhost" />
+                  <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-5 space-y-4 border border-blue-100">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Server size={18} className="text-blue-600" />
+                      <span className="text-sm font-bold text-blue-800">{formData.tipo === 'sqlserver' ? 'SQL Server' : 'PostgreSQL'}</span>
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium text-nexus-text mb-1">Porta</label>
-                      <input type="text" value={formData.config.port} onChange={(e) => setFormData({ ...formData, config: { ...formData.config, port: e.target.value } })} className="input w-full" placeholder="1433 / 5432" />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-nexus-text mb-1">Banco de Dados</label>
-                      <input type="text" value={formData.config.database} onChange={(e) => setFormData({ ...formData, config: { ...formData.config, database: e.target.value } })} className="input w-full" />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-nexus-text mb-1">Usuário</label>
-                      <input type="text" value={formData.config.username} onChange={(e) => setFormData({ ...formData, config: { ...formData.config, username: e.target.value } })} className="input w-full" />
-                    </div>
-                    <div className="col-span-2">
-                      <label className="block text-sm font-medium text-nexus-text mb-1">Senha</label>
-                      <input type="password" value={formData.config.password} onChange={(e) => setFormData({ ...formData, config: { ...formData.config, password: e.target.value } })} className="input w-full" />
-                    </div>
-                    <div className="col-span-2">
-                      <label className="block text-sm font-medium text-nexus-text mb-1">Query SQL</label>
-                      <textarea
-                        value={formData.config.query}
-                        onChange={(e) => setFormData({ ...formData, config: { ...formData.config, query: e.target.value } })}
-                        className="input w-full font-mono text-xs"
-                        rows={6}
-                        placeholder="SELECT matricula, codigo_indicador, numerador, denominador, periodo FROM ..."
-                      />
-                      <p className="text-xs text-nexus-muted mt-1">A query deve retornar as colunas mapeadas abaixo</p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs text-nexus-muted mb-1.5 font-semibold uppercase tracking-wide">Host / Servidor</label>
+                        <input type="text" value={formData.config.host} onChange={(e) => setFormData({ ...formData, config: { ...formData.config, host: e.target.value } })} className="w-full px-4 py-2.5 bg-white border border-blue-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-300" placeholder="192.168.1.100 ou servidor.empresa.com" />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-nexus-muted mb-1.5 font-semibold uppercase tracking-wide">Porta</label>
+                        <input type="text" value={formData.config.port} onChange={(e) => setFormData({ ...formData, config: { ...formData.config, port: e.target.value } })} className="w-full px-4 py-2.5 bg-white border border-blue-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-300" placeholder={formData.tipo === 'sqlserver' ? '1433' : '5432'} />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-nexus-muted mb-1.5 font-semibold uppercase tracking-wide">Banco de Dados</label>
+                        <input type="text" value={formData.config.database} onChange={(e) => setFormData({ ...formData, config: { ...formData.config, database: e.target.value } })} className="w-full px-4 py-2.5 bg-white border border-blue-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-300" placeholder="nome_do_banco" />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-nexus-muted mb-1.5 font-semibold uppercase tracking-wide">Usuário</label>
+                        <input type="text" value={formData.config.username} onChange={(e) => setFormData({ ...formData, config: { ...formData.config, username: e.target.value } })} className="w-full px-4 py-2.5 bg-white border border-blue-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-300" placeholder="sa" />
+                      </div>
+                      <div className="md:col-span-2">
+                        <label className="block text-xs text-nexus-muted mb-1.5 font-semibold uppercase tracking-wide">Senha</label>
+                        <input type="password" value={formData.config.password} onChange={(e) => setFormData({ ...formData, config: { ...formData.config, password: e.target.value } })} className="w-full px-4 py-2.5 bg-white border border-blue-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-300" />
+                      </div>
+                      <div className="md:col-span-2">
+                        <label className="block text-xs text-nexus-muted mb-1.5 font-semibold uppercase tracking-wide">Query SQL</label>
+                        <textarea
+                          value={formData.config.query}
+                          onChange={(e) => setFormData({ ...formData, config: { ...formData.config, query: e.target.value } })}
+                          className="w-full px-4 py-3 bg-white border border-blue-200 rounded-xl text-xs font-mono focus:outline-none focus:ring-2 focus:ring-blue-300"
+                          rows={5}
+                          placeholder={'SELECT matricula, nome_colaborador,\n       codigo_indicador, numerador,\n       denominador, periodo\nFROM sua_tabela\nWHERE periodo = @periodo'}
+                        />
+                        <p className="text-[10px] text-blue-600 mt-1.5 flex items-center gap-1"><Info size={12} /> A query deve retornar as colunas mapeadas na seção abaixo</p>
+                      </div>
                     </div>
                   </div>
                 )}
 
                 {formData.tipo === 'excel' && (
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="col-span-2">
-                      <label className="block text-sm font-medium text-nexus-text mb-1">Caminho da Pasta na Rede</label>
-                      <input type="text" value={formData.config.caminho_rede} onChange={(e) => setFormData({ ...formData, config: { ...formData.config, caminho_rede: e.target.value } })} className="input w-full" placeholder="\\servidor\pasta\relatorios" />
+                  <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-5 space-y-4 border border-green-100">
+                    <div className="flex items-center gap-2 mb-2">
+                      <FileSpreadsheet size={18} className="text-green-600" />
+                      <span className="text-sm font-bold text-green-800">Arquivo Excel</span>
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium text-nexus-text mb-1">Nome do Arquivo</label>
-                      <input type="text" value={formData.config.nome_arquivo} onChange={(e) => setFormData({ ...formData, config: { ...formData.config, nome_arquivo: e.target.value } })} className="input w-full" placeholder="dados_rv.xlsx" />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-nexus-text mb-1">Aba (Sheet)</label>
-                      <input type="text" value={formData.config.sheet_name} onChange={(e) => setFormData({ ...formData, config: { ...formData.config, sheet_name: e.target.value } })} className="input w-full" placeholder="Dados" />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="md:col-span-2">
+                        <label className="block text-xs text-nexus-muted mb-1.5 font-semibold uppercase tracking-wide">Arquivo Excel</label>
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            value={formData.config.caminho_rede}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              const fileName = val.includes('\\') ? val.split('\\').pop() || '' : val.includes('/') ? val.split('/').pop() || '' : '';
+                              setFormData({ ...formData, config: { ...formData.config, caminho_rede: val, nome_arquivo: fileName || formData.config.nome_arquivo } });
+                            }}
+                            className="flex-1 px-4 py-2.5 bg-white border border-green-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-300"
+                            placeholder="\\servidor\pasta\relatorios\dados_rv.xlsx"
+                          />
+                          <label className="flex items-center gap-2 px-4 py-2.5 bg-green-600 text-white rounded-xl text-sm font-semibold cursor-pointer hover:bg-green-700 transition-colors">
+                            <FolderOpen size={16} />
+                            Procurar
+                            <input
+                              type="file"
+                              accept=".xlsx,.xls"
+                              className="hidden"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                  setFormData({ ...formData, config: { ...formData.config, caminho_rede: file.name, nome_arquivo: file.name } });
+                                }
+                              }}
+                            />
+                          </label>
+                        </div>
+                        <p className="text-[10px] text-green-600 mt-1.5 flex items-center gap-1"><Info size={12} /> Digite o caminho da rede ou clique em Procurar para selecionar o arquivo</p>
+                      </div>
+                      <div>
+                        <label className="block text-xs text-nexus-muted mb-1.5 font-semibold uppercase tracking-wide">Nome do Arquivo (auto)</label>
+                        <input type="text" value={formData.config.nome_arquivo} onChange={(e) => setFormData({ ...formData, config: { ...formData.config, nome_arquivo: e.target.value } })} className="w-full px-4 py-2.5 bg-white border border-green-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-300" placeholder="dados_rv.xlsx" readOnly={!!formData.config.caminho_rede} />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-nexus-muted mb-1.5 font-semibold uppercase tracking-wide">Aba (Sheet)</label>
+                        <input type="text" value={formData.config.sheet_name} onChange={(e) => setFormData({ ...formData, config: { ...formData.config, sheet_name: e.target.value } })} className="w-full px-4 py-2.5 bg-white border border-green-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-300" placeholder="Plan1" />
+                      </div>
                     </div>
                   </div>
                 )}
 
                 {(formData.tipo === 'csv' || formData.tipo === 'txt') && (
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="col-span-2">
-                      <label className="block text-sm font-medium text-nexus-text mb-1">Caminho do Arquivo</label>
-                      <input type="text" value={formData.config.caminho_arquivo} onChange={(e) => setFormData({ ...formData, config: { ...formData.config, caminho_arquivo: e.target.value } })} className="input w-full" placeholder="\\servidor\pasta\dados.csv" />
+                  <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-xl p-5 space-y-4 border border-amber-100">
+                    <div className="flex items-center gap-2 mb-2">
+                      <FileText size={18} className="text-amber-600" />
+                      <span className="text-sm font-bold text-amber-800">Arquivo {formData.tipo.toUpperCase()}</span>
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium text-nexus-text mb-1">Delimitador</label>
-                      <select value={formData.config.delimitador} onChange={(e) => setFormData({ ...formData, config: { ...formData.config, delimitador: e.target.value } })} className="input w-full">
-                        {DELIMITADORES.map(d => <option key={d.value} value={d.value}>{d.label}</option>)}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-nexus-text mb-1">Encoding</label>
-                      <select value={formData.config.encoding} onChange={(e) => setFormData({ ...formData, config: { ...formData.config, encoding: e.target.value } })} className="input w-full">
-                        {ENCODINGS.map(e => <option key={e.value} value={e.value}>{e.label}</option>)}
-                      </select>
-                    </div>
-                    <div className="col-span-2">
-                      <label className="flex items-center gap-2 text-sm">
-                        <input
-                          type="checkbox"
-                          checked={formData.config.tem_cabecalho}
-                          onChange={(e) => setFormData({ ...formData, config: { ...formData.config, tem_cabecalho: e.target.checked } })}
-                          className="rounded"
-                        />
-                        Arquivo possui cabeçalho (primeira linha com nomes das colunas)
-                      </label>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="md:col-span-2">
+                        <label className="block text-xs text-nexus-muted mb-1.5 font-semibold uppercase tracking-wide">Caminho do Arquivo</label>
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            value={formData.config.caminho_arquivo}
+                            onChange={(e) => setFormData({ ...formData, config: { ...formData.config, caminho_arquivo: e.target.value } })}
+                            className="flex-1 px-4 py-2.5 bg-white border border-amber-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-300"
+                            placeholder={`\\\\servidor\\pasta\\dados.${formData.tipo}`}
+                          />
+                          <label className="flex items-center gap-2 px-4 py-2.5 bg-amber-600 text-white rounded-xl text-sm font-semibold cursor-pointer hover:bg-amber-700 transition-colors">
+                            <FolderOpen size={16} />
+                            Procurar
+                            <input
+                              type="file"
+                              accept={formData.tipo === 'csv' ? '.csv' : '.txt'}
+                              className="hidden"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                  setFormData({ ...formData, config: { ...formData.config, caminho_arquivo: file.name } });
+                                }
+                              }}
+                            />
+                          </label>
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-xs text-nexus-muted mb-1.5 font-semibold uppercase tracking-wide">Delimitador</label>
+                        <div className="grid grid-cols-4 gap-2">
+                          {DELIMITADORES.map(d => (
+                            <button
+                              key={d.value}
+                              type="button"
+                              onClick={() => setFormData({ ...formData, config: { ...formData.config, delimitador: d.value } })}
+                              className={`px-3 py-2 rounded-xl text-xs font-semibold border-2 transition-all ${
+                                formData.config.delimitador === d.value
+                                  ? 'border-amber-500 bg-amber-100 text-amber-800'
+                                  : 'border-amber-200 text-nexus-muted hover:border-amber-300'
+                              }`}
+                            >
+                              {d.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-xs text-nexus-muted mb-1.5 font-semibold uppercase tracking-wide">Encoding</label>
+                        <select value={formData.config.encoding} onChange={(e) => setFormData({ ...formData, config: { ...formData.config, encoding: e.target.value } })} className="w-full px-4 py-2.5 bg-white border border-amber-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-300">
+                          {ENCODINGS.map(e => <option key={e.value} value={e.value}>{e.label}</option>)}
+                        </select>
+                      </div>
+                      <div className="md:col-span-2">
+                        <label className="flex items-center gap-3 px-4 py-3 bg-white border border-amber-200 rounded-xl cursor-pointer hover:bg-amber-50 transition-colors">
+                          <input
+                            type="checkbox"
+                            checked={formData.config.tem_cabecalho}
+                            onChange={(e) => setFormData({ ...formData, config: { ...formData.config, tem_cabecalho: e.target.checked } })}
+                            className="w-4 h-4 rounded border-amber-300 text-amber-600 focus:ring-amber-500"
+                          />
+                          <div>
+                            <p className="text-sm font-semibold text-nexus-text">Arquivo possui cabeçalho</p>
+                            <p className="text-[10px] text-nexus-muted">Primeira linha contém nomes das colunas</p>
+                          </div>
+                        </label>
+                      </div>
                     </div>
                   </div>
                 )}
               </div>
 
-              {/* Mapeamento de Colunas */}
+              {/* Step 3 — Mapeamento de Colunas */}
               <div className="space-y-4">
-                <h3 className="font-semibold text-nexus-text border-b pb-2">Mapeamento de Colunas</h3>
-                <p className="text-xs text-nexus-muted">Informe o nome exato das colunas conforme aparecem na fonte de dados</p>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-nexus-text mb-1">Coluna: Matrícula</label>
-                    <input type="text" value={formData.mapeamento.coluna_matricula} onChange={(e) => setFormData({ ...formData, mapeamento: { ...formData.mapeamento, coluna_matricula: e.target.value } })} className="input w-full" placeholder="matricula" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-nexus-text mb-1">Coluna: Código Indicador</label>
-                    <input type="text" value={formData.mapeamento.coluna_indicador} onChange={(e) => setFormData({ ...formData, mapeamento: { ...formData.mapeamento, coluna_indicador: e.target.value } })} className="input w-full" placeholder="codigo_indicador" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-nexus-text mb-1">Coluna: Numerador</label>
-                    <input type="text" value={formData.mapeamento.coluna_numerador} onChange={(e) => setFormData({ ...formData, mapeamento: { ...formData.mapeamento, coluna_numerador: e.target.value } })} className="input w-full" placeholder="numerador" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-nexus-text mb-1">Coluna: Denominador</label>
-                    <input type="text" value={formData.mapeamento.coluna_denominador} onChange={(e) => setFormData({ ...formData, mapeamento: { ...formData.mapeamento, coluna_denominador: e.target.value } })} className="input w-full" placeholder="denominador" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-nexus-text mb-1">Coluna: Período</label>
-                    <input type="text" value={formData.mapeamento.coluna_periodo} onChange={(e) => setFormData({ ...formData, mapeamento: { ...formData.mapeamento, coluna_periodo: e.target.value } })} className="input w-full" placeholder="periodo" />
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center text-purple-700 font-bold text-sm">3</div>
+                  <h3 className="text-base font-bold text-nexus-text">Mapeamento de Colunas</h3>
+                </div>
+                <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl p-5 border border-purple-100">
+                  <p className="text-xs text-purple-700 mb-4 flex items-center gap-1.5"><Info size={14} /> Informe o nome exato das colunas conforme aparecem na fonte de dados</p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-xs text-nexus-muted mb-1.5 font-semibold uppercase tracking-wide">Matrícula</label>
+                      <input type="text" value={formData.mapeamento.coluna_matricula} onChange={(e) => setFormData({ ...formData, mapeamento: { ...formData.mapeamento, coluna_matricula: e.target.value } })} className="w-full px-4 py-2.5 bg-white border border-purple-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-300" placeholder="matricula" />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-nexus-muted mb-1.5 font-semibold uppercase tracking-wide">Código Indicador</label>
+                      <input type="text" value={formData.mapeamento.coluna_indicador} onChange={(e) => setFormData({ ...formData, mapeamento: { ...formData.mapeamento, coluna_indicador: e.target.value } })} className="w-full px-4 py-2.5 bg-white border border-purple-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-300" placeholder="codigo_indicador" />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-nexus-muted mb-1.5 font-semibold uppercase tracking-wide">Numerador</label>
+                      <input type="text" value={formData.mapeamento.coluna_numerador} onChange={(e) => setFormData({ ...formData, mapeamento: { ...formData.mapeamento, coluna_numerador: e.target.value } })} className="w-full px-4 py-2.5 bg-white border border-purple-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-300" placeholder="numerador" />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-nexus-muted mb-1.5 font-semibold uppercase tracking-wide">Denominador</label>
+                      <input type="text" value={formData.mapeamento.coluna_denominador} onChange={(e) => setFormData({ ...formData, mapeamento: { ...formData.mapeamento, coluna_denominador: e.target.value } })} className="w-full px-4 py-2.5 bg-white border border-purple-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-300" placeholder="denominador" />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-nexus-muted mb-1.5 font-semibold uppercase tracking-wide">Período</label>
+                      <input type="text" value={formData.mapeamento.coluna_periodo} onChange={(e) => setFormData({ ...formData, mapeamento: { ...formData.mapeamento, coluna_periodo: e.target.value } })} className="w-full px-4 py-2.5 bg-white border border-purple-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-300" placeholder="periodo" />
+                    </div>
                   </div>
                 </div>
               </div>
 
               {/* Ações */}
-              <div className="flex justify-end gap-3 pt-4 border-t">
-                <button type="button" onClick={() => setShowModal(false)} className="btn btn-outline">
+              <div className="flex justify-between items-center pt-5 border-t border-nexus-border">
+                <button type="button" onClick={() => setShowModal(false)} className="px-5 py-2.5 text-sm font-medium text-nexus-muted hover:text-nexus-text border border-nexus-border rounded-xl hover:bg-nexus-bg transition-colors">
                   Cancelar
                 </button>
-                <button type="submit" className="btn-gradient">
-                  {editingFonte ? 'Salvar Alterações' : 'Criar Fonte'}
+                <button type="submit" className="px-8 py-2.5 btn-gradient rounded-xl text-sm font-bold flex items-center gap-2">
+                  <CheckCircle size={16} />
+                  {editingFonte ? 'Salvar Alterações' : 'Criar Fonte de Dados'}
                 </button>
               </div>
             </form>
