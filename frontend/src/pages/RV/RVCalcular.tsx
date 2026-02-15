@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Building2, Target, Settings2, Database, BarChart3, CheckCircle, Loader2, ChevronDown, Trash2, Mail } from 'lucide-react';
+import { Building2, Target, Settings2, BarChart3, CheckCircle, Loader2, ChevronDown, Trash2, Mail } from 'lucide-react';
 import { useApi } from '../../hooks/useApi';
 import { useToast } from '../../contexts/ToastContext';
 import api from '../../api';
@@ -7,7 +7,6 @@ import Stepper, { type StepConfig } from './components/Stepper';
 import StepCliente from './components/StepCliente';
 import StepIndicadores from './components/StepIndicadores';
 import StepRegras from './components/StepRegras';
-import StepFontesDados from './components/StepFontesDados';
 import StepSimulacao from './components/StepSimulacao';
 import StepConfirmacao from './components/StepConfirmacao';
 import EnviarEmailModal from './components/EnviarEmailModal';
@@ -16,9 +15,8 @@ const STEPS: StepConfig[] = [
   { id: 'cliente',     label: '0° Cliente',     icon: Building2,   description: 'Selecione o cliente' },
   { id: 'indicadores', label: '1° Indicadores', icon: Target,      description: 'Defina os KPIs' },
   { id: 'regras',      label: '2° Regras',      icon: Settings2,   description: 'Configure as regras' },
-  { id: 'fontes',      label: '3° Fonte de Dados', icon: Database,  description: 'Selecione período e dados' },
-  { id: 'calculo',     label: '4° Cálculo',     icon: BarChart3,   description: 'Simule o cálculo' },
-  { id: 'resultados',  label: '5° Resultados',  icon: CheckCircle, description: 'Confirme e salve' },
+  { id: 'calculo',     label: '3° Cálculo',     icon: BarChart3,   description: 'Simule o cálculo' },
+  { id: 'resultados',  label: '4° Resultados',  icon: CheckCircle, description: 'Confirme e salve' },
 ];
 
 export default function RVCalcular() {
@@ -43,7 +41,7 @@ export default function RVCalcular() {
   const goToStep = (step: number) => {
     if (step < currentStep) {
       // Se voltar antes do cálculo, limpar simulação
-      if (step < 4) setSimulacao(null);
+      if (step < 3) setSimulacao(null);
       // Se voltar para step 0, pode trocar de cliente
       if (step === 0) {
         setRegrasSelecionadas([]);
@@ -62,7 +60,7 @@ export default function RVCalcular() {
 
   const prevStep = () => {
     if (currentStep > 0) {
-      if (currentStep <= 4) setSimulacao(null);
+      if (currentStep <= 3) setSimulacao(null);
       setCurrentStep(currentStep - 1);
     }
   };
@@ -132,14 +130,6 @@ export default function RVCalcular() {
           />
         )}
         {currentStep === 3 && (
-          <StepFontesDados
-            periodo={periodo}
-            setPeriodo={setPeriodo}
-            onNext={nextStep}
-            onBack={prevStep}
-          />
-        )}
-        {currentStep === 4 && (
           <StepSimulacao
             periodo={periodo}
             regrasSelecionadas={regrasSelecionadas}
@@ -149,7 +139,7 @@ export default function RVCalcular() {
             onBack={prevStep}
           />
         )}
-        {currentStep === 5 && (
+        {currentStep === 4 && (
           <StepConfirmacao
             clienteId={clientesSelecionados[0] || null}
             periodo={periodo}
