@@ -1,0 +1,45 @@
+/*
+ * Layout adjustments for the Data Sources tab.
+ *  - Ensure the header does not cut off the "+ Nova fonte" button.
+ *  - Add responsive padding and overflow handling.
+ *  - Preserve existing styles by using class names that exist in the
+ *    component.
+ */
+
+/* Header container */
+.data-sources-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 1rem;
+  overflow: hidden;
+}
+
+/* "+ Nova fonte" button */
+.new-source-btn {
+  flex: 0 0 auto;
+  padding: 0.25rem 0.75rem;
+  font-size: 0.9rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Ensure the main container is wide enough */
+.data-sources-container {
+  min-width: 100%;
+  box-sizing: border-box;
+}
+
+/* Add a subtle border to separate sections */
+.data-sources-section {
+  border-bottom: 1px solid var(--border-color, #e0e0e0);
+}
+
+/* Responsive adjustments for small screens */
+@media (max-width: 600px) {
+  .new-source-btn {
+    padding: 0.2rem 0.5rem;
+    font-size: 0.8rem;
+  }
+}

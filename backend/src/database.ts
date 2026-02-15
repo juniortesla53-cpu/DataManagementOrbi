@@ -170,6 +170,67 @@ export function initDatabase() {
       data_envio DATETIME DEFAULT CURRENT_TIMESTAMP,
       status TEXT DEFAULT 'enviado' CHECK(status IN ('enviado','pendente','erro'))
     );
+
+    -- ══════════════════════════════════════
+    -- NEW: RV Plano Architecture (Items 15-16)
+    -- ══════════════════════════════════════
+
+    CREATE TABLE IF NOT EXISTS rv_plano (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      nome TEXT NOT NULL,
+      descricao TEXT,
+      valor_dsr REAL DEFAULT 0,
+      teto_rv REAL,
+      id_cliente INTEGER REFERENCES rv_clientes(id),
+      ativo INTEGER DEFAULT 1,
+      vigencia_inicio TEXT,
+      vigencia_fim TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS rv_plano_elegibilidade (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      id_plano INTEGER NOT NULL REFERENCES rv_plano(id) ON DELETE CASCADE,
+      id_indicador INTEGER NOT NULL REFERENCES rv_indicadores_dim(id),
+      operador TEXT NOT NULL DEFAULT '>=' CHECK(operador IN ('>=','<=','>','<','==','!=')),
+      valor_minimo REAL NOT NULL,
+      ordem INTEGER DEFAULT 0
+    );
+
+    CREATE TABLE IF NOT EXISTS rv_plano_remuneracao (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      id_plano INTEGER NOT NULL REFERENCES rv_plano(id) ON DELETE CASCADE,
+      id_indicador INTEGER NOT NULL REFERENCES rv_indicadores_dim(id),
+      tem_regra_propria INTEGER DEFAULT 1,
+      ordem INTEGER DEFAULT 0
+    );
+
+    CREATE TABLE IF NOT EXISTS rv_plano_remuneracao_faixas (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      id_remuneracao INTEGER NOT NULL REFERENCES rv_plano_remuneracao(id) ON DELETE CASCADE,
+      faixa_min REAL NOT NULL,
+      faixa_max REAL,
+      valor_payout REAL NOT NULL,
+      tipo_payout TEXT DEFAULT 'valor_fixo' CHECK(tipo_payout IN ('percentual_salario','valor_fixo','percentual_indicador')),
+      ordem INTEGER DEFAULT 0
+    );
+
+    CREATE TABLE IF NOT EXISTS rv_plano_deflatores (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      id_plano INTEGER NOT NULL REFERENCES rv_plano(id) ON DELETE CASCADE,
+      id_indicador INTEGER NOT NULL REFERENCES rv_indicadores_dim(id),
+      ordem INTEGER DEFAULT 0
+    );
+
+    CREATE TABLE IF NOT EXISTS rv_plano_deflator_faixas (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      id_deflator INTEGER NOT NULL REFERENCES rv_plano_deflatores(id) ON DELETE CASCADE,
+      faixa_min REAL NOT NULL,
+      faixa_max REAL,
+      percentual_reducao REAL NOT NULL,
+      ordem INTEGER DEFAULT 0
+    );
   `);
 
   const count = db.prepare('SELECT COUNT(*) as c FROM users').get() as any;

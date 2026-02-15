@@ -190,24 +190,24 @@ export default function RVFontesConfig() {
   return (
     <div className="p-6 space-y-6 animate-fadeIn">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-nexus-text flex items-center gap-2">
-            <Database className="text-nexus-purple" />
-            Fontes de Dados
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="min-w-0">
+          <h1 className="text-xl sm:text-2xl font-bold text-nexus-text flex items-center gap-2">
+            <Database className="text-nexus-purple flex-shrink-0" />
+            <span className="truncate">Fontes de Dados</span>
           </h1>
           <p className="text-nexus-muted text-sm mt-1">Configure as fontes externas para cálculo de RV</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-shrink-0">
           <button
             onClick={() => setShowTemplates(!showTemplates)}
-            className="btn btn-outline-primary flex items-center gap-2"
+            className="btn btn-outline-primary flex items-center gap-2 whitespace-nowrap px-4 py-2.5 rounded-xl text-sm font-medium"
           >
-            <Download size={16} />
-            Templates
+            <Download size={16} className="flex-shrink-0" />
+            <span className="hidden sm:inline">Templates</span>
           </button>
-          <button onClick={() => openModal()} className="btn-gradient flex items-center gap-2">
-            <Plus size={16} />
+          <button onClick={() => openModal()} className="btn-gradient flex items-center gap-2 whitespace-nowrap px-5 py-2.5 rounded-xl text-sm font-semibold">
+            <Plus size={16} className="flex-shrink-0" />
             Nova Fonte
           </button>
         </div>

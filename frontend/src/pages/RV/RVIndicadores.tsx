@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Edit2, Trash2, X, Loader2, AlertCircle } from 'lucide-react';
+import { Plus, Edit2, Trash2, X, Loader2, AlertCircle, Power } from 'lucide-react';
 import { useApi } from '../../hooks/useApi';
 import { useToast } from '../../contexts/ToastContext';
 import api from '../../api';
@@ -31,8 +31,19 @@ export default function RVIndicadores() {
     finally { setSaving(false); }
   };
 
+  const toggleAtivo = async (ind: any) => {
+    const novoStatus = ind.ativo ? 0 : 1;
+    try {
+      await api.put(`/rv/indicadores/${ind.id}`, { codigo: ind.codigo, nome: ind.nome, descricao: ind.descricao || '', unidade: ind.unidade, tipo: ind.tipo, ativo: novoStatus, id_cliente: ind.id_cliente || null });
+      showSuccess(novoStatus ? 'Indicador ativado' : 'Indicador desativado');
+      refetch();
+    } catch (err: any) {
+      showError(err.response?.data?.error || 'Erro ao alterar status');
+    }
+  };
+
   const remove = async (id: number) => {
-    if (!confirm('Desativar este indicador?')) return;
+    if (!confirm('Excluir permanentemente este indicador?')) return;
     try { await api.delete(`/rv/indicadores/${id}`); showSuccess('Indicador desativado'); refetch(); }
     catch (err: any) { showError(err.response?.data?.error || 'Erro'); }
   };
@@ -66,13 +77,20 @@ export default function RVIndicadores() {
           </thead>
           <tbody>
             {filtered.map(i => (
-              <tr key={i.id} className="border-b border-nexus-borderLight hover:bg-nexus-bg/50 transition-colors">
-                <td className="p-3 font-mono text-xs text-nexus-purple font-semibold">{i.codigo}</td>
-                <td className="p-3 font-medium text-nexus-text">{i.nome}</td>
+              <tr key={i.id} className={`border-b border-nexus-borderLight hover:bg-nexus-bg/50 transition-colors ${!i.ativo ? 'opacity-60 bg-gray-50/50' : ''}`}>
+                <td className={`p-3 font-mono text-xs font-semibold ${i.ativo ? 'text-nexus-purple' : 'text-nexus-muted'}`}>{i.codigo}</td>
+                <td className={`p-3 font-medium ${i.ativo ? 'text-nexus-text' : 'text-nexus-muted'}`}>{i.nome}</td>
                 <td className="p-3 text-nexus-textSecondary">{i.unidade}</td>
                 <td className="p-3"><span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-slate-100 text-slate-600">{i.tipo}</span></td>
                 <td className="p-3"><span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${i.ativo ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-600'}`}>{i.ativo ? 'Ativo' : 'Inativo'}</span></td>
                 <td className="p-3 text-right space-x-1">
+                  <button
+                    onClick={() => toggleAtivo(i)}
+                    className={`p-1 transition-colors ${i.ativo ? 'text-emerald-600 hover:text-emerald-700' : 'text-nexus-muted hover:text-nexus-text'}`}
+                    title={i.ativo ? 'Desativar' : 'Ativar'}
+                  >
+                    <Power size={14} />
+                  </button>
                   <button onClick={() => openEdit(i)} className="p-1 text-nexus-muted hover:text-nexus-purple transition-colors"><Edit2 size={14} /></button>
                   <button onClick={() => remove(i.id)} className="p-1 text-nexus-muted hover:text-nexus-danger transition-colors"><Trash2 size={14} /></button>
                 </td>

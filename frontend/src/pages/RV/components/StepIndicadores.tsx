@@ -175,9 +175,9 @@ export default function StepIndicadores({ clienteIds, onNext, onBack }: Props) {
           </thead>
           <tbody>
             {indicadores.map(i => (
-              <tr key={i.id} className="border-b border-nexus-borderLight hover:bg-nexus-bg/50 transition-colors">
-                <td className="p-3 font-mono text-xs text-nexus-purple font-semibold">{i.codigo}</td>
-                <td className="p-3 font-medium text-nexus-text">{i.nome}</td>
+              <tr key={i.id} className={`border-b border-nexus-borderLight hover:bg-nexus-bg/50 transition-colors ${!i.ativo ? 'opacity-60 bg-gray-50/50' : ''}`}>
+                <td className={`p-3 font-mono text-xs font-semibold ${i.ativo ? 'text-nexus-purple' : 'text-nexus-muted'}`}>{i.codigo}</td>
+                <td className={`p-3 font-medium ${i.ativo ? 'text-nexus-text' : 'text-nexus-muted'}`}>{i.nome}</td>
                 <td className="p-3 text-nexus-textSecondary">{i.unidade}</td>
                 <td className="p-3">
                   <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-slate-100 text-slate-600">{i.tipo}</span>

@@ -848,4 +848,317 @@ router.post('/calculos/:id/enviar-email', async (req: Request, res: Response) =>
   }
 });
 
+// ════════════════════════════════════════
+// PLANOS RV (NEW ARCHITECTURE)
+// ════════════════════════════════════════
+
+// GET /rv/planos - List all plans (with client filter)
+router.get('/planos', (req, res) => {
+  const { id_cliente } = req.query;
+  let sql = 'SELECT * FROM rv_plano WHERE 1=1';
+  const params: any[] = [];
+  
+  if (id_cliente) {
+    sql += ' AND (id_cliente = ? OR id_cliente IS NULL)';
+    params.push(id_cliente);
+  }
+  
+  sql += ' ORDER BY nome';
+  const planos = db.prepare(sql).all(...params) as any[];
+  
+  res.json(planos);
+});
+
+// GET /rv/planos/:id - Get plan with all nested data
+router.get('/planos/:id', (req, res) => {
+  const plano = db.prepare('SELECT * FROM rv_plano WHERE id=?').get(req.params.id) as any;
+  
+  if (!plano) {
+    return res.status(404).json({ error: 'Plano não encontrado' });
+  }
+  
+  // Buscar elegibilidade
+  const elegibilidade = db.prepare(`
+    SELECT e.*, i.codigo as indicador_codigo, i.nome as indicador_nome
+    FROM rv_plano_elegibilidade e
+    JOIN rv_indicadores_dim i ON i.id = e.id_indicador
+    WHERE e.id_plano = ?
+    ORDER BY e.ordem
+  `).all(req.params.id);
+  
+  // Buscar remuneração
+  const remuneracao = db.prepare(`
+    SELECT r.*, i.codigo as indicador_codigo, i.nome as indicador_nome
+    FROM rv_plano_remuneracao r
+    JOIN rv_indicadores_dim i ON i.id = r.id_indicador
+    WHERE r.id_plano = ?
+    ORDER BY r.ordem
+  `).all(req.params.id) as any[];
+  
+  // Para cada indicador de remuneração, buscar suas faixas
+  for (const rem of remuneracao) {
+    rem.faixas = db.prepare(`
+      SELECT * FROM rv_plano_remuneracao_faixas
+      WHERE id_remuneracao = ?
+      ORDER BY ordem
+    `).all(rem.id);
+  }
+  
+  // Buscar deflatores
+  const deflatores = db.prepare(`
+    SELECT d.*, i.codigo as indicador_codigo, i.nome as indicador_nome
+    FROM rv_plano_deflatores d
+    JOIN rv_indicadores_dim i ON i.id = d.id_indicador
+    WHERE d.id_plano = ?
+    ORDER BY d.ordem
+  `).all(req.params.id) as any[];
+  
+  // Para cada deflator, buscar suas faixas
+  for (const def of deflatores) {
+    def.faixas = db.prepare(`
+      SELECT * FROM rv_plano_deflator_faixas
+      WHERE id_deflator = ?
+      ORDER BY ordem
+    `).all(def.id);
+  }
+  
+  res.json({
+    ...plano,
+    elegibilidade,
+    remuneracao,
+    deflatores
+  });
+});
+
+// POST /rv/planos - Create plan with all nested data in a single transaction
+router.post('/planos', adminMiddleware, (req: Request, res: Response) => {
+  const { nome, descricao, valor_dsr, teto_rv, vigencia_inicio, vigencia_fim, id_cliente, elegibilidade, remuneracao, deflatores } = req.body;
+  
+  if (!nome) {
+    return res.status(400).json({ error: 'Nome é obrigatório' });
+  }
+  
+  const tx = db.transaction(() => {
+    // Insert plano
+    const planoResult = db.prepare(`
+      INSERT INTO rv_plano (nome, descricao, valor_dsr, teto_rv, vigencia_inicio, vigencia_fim, id_cliente)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      nome,
+      descricao || null,
+      valor_dsr || 0,
+      teto_rv || null,
+      vigencia_inicio || null,
+      vigencia_fim || null,
+      id_cliente || null
+    );
+    
+    const planoId = planoResult.lastInsertRowid as number;
+    
+    // Insert elegibilidade
+    if (Array.isArray(elegibilidade)) {
+      const insEleg = db.prepare(`
+        INSERT INTO rv_plano_elegibilidade (id_plano, id_indicador, operador, valor_minimo, ordem)
+        VALUES (?, ?, ?, ?, ?)
+      `);
+      
+      elegibilidade.forEach((e: any, idx: number) => {
+        insEleg.run(planoId, e.id_indicador, e.operador || '>=', e.valor_minimo, idx);
+      });
+    }
+    
+    // Insert remuneracao
+    if (Array.isArray(remuneracao)) {
+      const insRem = db.prepare(`
+        INSERT INTO rv_plano_remuneracao (id_plano, id_indicador, tem_regra_propria, ordem)
+        VALUES (?, ?, ?, ?)
+      `);
+      
+      const insFaixa = db.prepare(`
+        INSERT INTO rv_plano_remuneracao_faixas (id_remuneracao, faixa_min, faixa_max, valor_payout, tipo_payout, ordem)
+        VALUES (?, ?, ?, ?, ?, ?)
+      `);
+      
+      remuneracao.forEach((r: any, idx: number) => {
+        const remResult = insRem.run(planoId, r.id_indicador, r.tem_regra_propria ? 1 : 0, idx);
+        const remId = remResult.lastInsertRowid as number;
+        
+        // Insert faixas for this remuneracao
+        if (Array.isArray(r.faixas)) {
+          r.faixas.forEach((f: any, fIdx: number) => {
+            insFaixa.run(
+              remId,
+              f.faixa_min,
+              f.faixa_max || null,
+              f.valor_payout,
+              f.tipo_payout || 'valor_fixo',
+              fIdx
+            );
+          });
+        }
+      });
+    }
+    
+    // Insert deflatores
+    if (Array.isArray(deflatores)) {
+      const insDef = db.prepare(`
+        INSERT INTO rv_plano_deflatores (id_plano, id_indicador, ordem)
+        VALUES (?, ?, ?)
+      `);
+      
+      const insDefFaixa = db.prepare(`
+        INSERT INTO rv_plano_deflator_faixas (id_deflator, faixa_min, faixa_max, percentual_reducao, ordem)
+        VALUES (?, ?, ?, ?, ?)
+      `);
+      
+      deflatores.forEach((d: any, idx: number) => {
+        const defResult = insDef.run(planoId, d.id_indicador, idx);
+        const defId = defResult.lastInsertRowid as number;
+        
+        // Insert faixas for this deflator
+        if (Array.isArray(d.faixas)) {
+          d.faixas.forEach((f: any, fIdx: number) => {
+            insDefFaixa.run(
+              defId,
+              f.faixa_min,
+              f.faixa_max || null,
+              f.percentual_reducao,
+              fIdx
+            );
+          });
+        }
+      });
+    }
+    
+    return planoId;
+  });
+  
+  try {
+    const planoId = tx();
+    res.json({ id: planoId });
+  } catch (e: any) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+// PUT /rv/planos/:id - Update plan (replace all nested data in transaction)
+router.put('/planos/:id', adminMiddleware, (req: Request, res: Response) => {
+  const { nome, descricao, valor_dsr, teto_rv, vigencia_inicio, vigencia_fim, id_cliente, ativo, elegibilidade, remuneracao, deflatores } = req.body;
+  const planoId = parseInt(req.params.id);
+  
+  const tx = db.transaction(() => {
+    // Update plano
+    db.prepare(`
+      UPDATE rv_plano
+      SET nome=?, descricao=?, valor_dsr=?, teto_rv=?, vigencia_inicio=?, vigencia_fim=?, id_cliente=?, ativo=?, updated_at=CURRENT_TIMESTAMP
+      WHERE id=?
+    `).run(
+      nome,
+      descricao || null,
+      valor_dsr || 0,
+      teto_rv || null,
+      vigencia_inicio || null,
+      vigencia_fim || null,
+      id_cliente || null,
+      ativo ?? 1,
+      planoId
+    );
+    
+    // Delete existing nested data
+    db.prepare('DELETE FROM rv_plano_elegibilidade WHERE id_plano=?').run(planoId);
+    
+    // Delete remuneracao (cascade will delete faixas)
+    db.prepare('DELETE FROM rv_plano_remuneracao WHERE id_plano=?').run(planoId);
+    
+    // Delete deflatores (cascade will delete faixas)
+    db.prepare('DELETE FROM rv_plano_deflatores WHERE id_plano=?').run(planoId);
+    
+    // Re-insert elegibilidade
+    if (Array.isArray(elegibilidade)) {
+      const insEleg = db.prepare(`
+        INSERT INTO rv_plano_elegibilidade (id_plano, id_indicador, operador, valor_minimo, ordem)
+        VALUES (?, ?, ?, ?, ?)
+      `);
+      
+      elegibilidade.forEach((e: any, idx: number) => {
+        insEleg.run(planoId, e.id_indicador, e.operador || '>=', e.valor_minimo, idx);
+      });
+    }
+    
+    // Re-insert remuneracao
+    if (Array.isArray(remuneracao)) {
+      const insRem = db.prepare(`
+        INSERT INTO rv_plano_remuneracao (id_plano, id_indicador, tem_regra_propria, ordem)
+        VALUES (?, ?, ?, ?)
+      `);
+      
+      const insFaixa = db.prepare(`
+        INSERT INTO rv_plano_remuneracao_faixas (id_remuneracao, faixa_min, faixa_max, valor_payout, tipo_payout, ordem)
+        VALUES (?, ?, ?, ?, ?, ?)
+      `);
+      
+      remuneracao.forEach((r: any, idx: number) => {
+        const remResult = insRem.run(planoId, r.id_indicador, r.tem_regra_propria ? 1 : 0, idx);
+        const remId = remResult.lastInsertRowid as number;
+        
+        if (Array.isArray(r.faixas)) {
+          r.faixas.forEach((f: any, fIdx: number) => {
+            insFaixa.run(
+              remId,
+              f.faixa_min,
+              f.faixa_max || null,
+              f.valor_payout,
+              f.tipo_payout || 'valor_fixo',
+              fIdx
+            );
+          });
+        }
+      });
+    }
+    
+    // Re-insert deflatores
+    if (Array.isArray(deflatores)) {
+      const insDef = db.prepare(`
+        INSERT INTO rv_plano_deflatores (id_plano, id_indicador, ordem)
+        VALUES (?, ?, ?)
+      `);
+      
+      const insDefFaixa = db.prepare(`
+        INSERT INTO rv_plano_deflator_faixas (id_deflator, faixa_min, faixa_max, percentual_reducao, ordem)
+        VALUES (?, ?, ?, ?, ?)
+      `);
+      
+      deflatores.forEach((d: any, idx: number) => {
+        const defResult = insDef.run(planoId, d.id_indicador, idx);
+        const defId = defResult.lastInsertRowid as number;
+        
+        if (Array.isArray(d.faixas)) {
+          d.faixas.forEach((f: any, fIdx: number) => {
+            insDefFaixa.run(
+              defId,
+              f.faixa_min,
+              f.faixa_max || null,
+              f.percentual_reducao,
+              fIdx
+            );
+          });
+        }
+      });
+    }
+  });
+  
+  try {
+    tx();
+    res.json({ success: true });
+  } catch (e: any) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+// DELETE /rv/planos/:id - Soft delete (set ativo=0)
+router.delete('/planos/:id', adminMiddleware, (req: Request, res: Response) => {
+  db.prepare('UPDATE rv_plano SET ativo=0, updated_at=CURRENT_TIMESTAMP WHERE id=?').run(req.params.id);
+  res.json({ success: true });
+});
+
 export default router;
