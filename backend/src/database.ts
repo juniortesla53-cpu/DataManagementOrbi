@@ -231,7 +231,58 @@ export function initDatabase() {
       percentual_reducao REAL NOT NULL,
       ordem INTEGER DEFAULT 0
     );
+
+    -- ══════════════════════════════════════
+    -- RV Grupo (agrupa sub-RVs por cliente)
+    -- ══════════════════════════════════════
+    CREATE TABLE IF NOT EXISTS rv_grupo (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      id_cliente INTEGER NOT NULL REFERENCES rv_clientes(id),
+      nome TEXT NOT NULL,
+      descricao TEXT,
+      vigencia_inicio TEXT,
+      vigencia_fim TEXT,
+      ativo INTEGER DEFAULT 1,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
+    -- ══════════════════════════════════════
+    -- Condições textuais em remuneração
+    -- (ex: operacao = 'VIVO NEXT', segmento = 'G2')
+    -- ══════════════════════════════════════
+    CREATE TABLE IF NOT EXISTS rv_plano_remuneracao_condicoes (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      id_remuneracao INTEGER NOT NULL REFERENCES rv_plano_remuneracao(id) ON DELETE CASCADE,
+      campo TEXT NOT NULL,
+      operador TEXT NOT NULL DEFAULT '=',
+      valor TEXT NOT NULL,
+      tipo TEXT DEFAULT 'texto',
+      ordem INTEGER DEFAULT 0
+    );
   `);
+
+  // ── Migrations: add columns to rv_plano (idempotent) ──
+  const planoMigrations = [
+    "ALTER TABLE rv_plano ADD COLUMN id_grupo INTEGER REFERENCES rv_grupo(id)",
+    "ALTER TABLE rv_plano ADD COLUMN tipo_cargo TEXT DEFAULT 'operador'",
+    "ALTER TABLE rv_plano ADD COLUMN tipo_calculo TEXT DEFAULT 'faixas'",
+    "ALTER TABLE rv_plano ADD COLUMN id_plano_referencia INTEGER REFERENCES rv_plano(id)",
+    "ALTER TABLE rv_plano ADD COLUMN percentual_referencia REAL",
+  ];
+  for (const sql of planoMigrations) {
+    try { db.exec(sql); } catch (_) { /* column already exists */ }
+  }
+
+  // ── Migrations: add text condition columns to elegibilidade ──
+  const elegMigrations = [
+    "ALTER TABLE rv_plano_elegibilidade ADD COLUMN campo TEXT",
+    "ALTER TABLE rv_plano_elegibilidade ADD COLUMN valor_texto TEXT",
+    "ALTER TABLE rv_plano_elegibilidade ADD COLUMN tipo_comparacao TEXT DEFAULT 'indicador'",
+  ];
+  for (const sql of elegMigrations) {
+    try { db.exec(sql); } catch (_) { /* column already exists */ }
+  }
 
   const count = db.prepare('SELECT COUNT(*) as c FROM users').get() as any;
   if (count.c === 0) {

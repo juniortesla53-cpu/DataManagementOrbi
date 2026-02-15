@@ -72,6 +72,11 @@ export default function RVFontesConfig() {
       coluna_valor: '',
       coluna_numerador: '',
       coluna_denominador: '',
+      coluna_operacao: '',
+      coluna_segmento: '',
+      coluna_cargo: '',
+      coluna_site: '',
+      coluna_dsr: '',
       coluna_periodo: '',
     },
     id_cliente: null as number | null,
@@ -117,6 +122,11 @@ export default function RVFontesConfig() {
           coluna_valor: '',
           coluna_numerador: '',
           coluna_denominador: '',
+          coluna_operacao: '',
+          coluna_segmento: '',
+          coluna_cargo: '',
+          coluna_site: '',
+          coluna_dsr: '',
           coluna_periodo: '',
         },
         id_cliente: null,
@@ -240,6 +250,11 @@ export default function RVFontesConfig() {
                   <tr className="border-b border-nexus-border"><td className="p-2 font-mono text-xs">codigo_indicador</td><td className="p-2 text-nexus-muted">Texto</td><td className="p-2 font-mono text-xs">VENDAS</td><td className="p-2 text-nexus-muted">Código do indicador cadastrado</td></tr>
                   <tr className="border-b border-nexus-border"><td className="p-2 font-mono text-xs">numerador</td><td className="p-2 text-nexus-muted">Número</td><td className="p-2 font-mono text-xs">120</td><td className="p-2 text-nexus-muted">Valor alcançado</td></tr>
                   <tr className="border-b border-nexus-border"><td className="p-2 font-mono text-xs">denominador</td><td className="p-2 text-nexus-muted">Número</td><td className="p-2 font-mono text-xs">100</td><td className="p-2 text-nexus-muted">Meta ou base de cálculo</td></tr>
+                  <tr className="border-b border-nexus-border"><td className="p-2 font-mono text-xs">operacao</td><td className="p-2 text-nexus-muted">Texto</td><td className="p-2 font-mono text-xs">VIVO NEXT</td><td className="p-2 text-nexus-muted">Operação/produto do colaborador</td></tr>
+                  <tr className="border-b border-nexus-border"><td className="p-2 font-mono text-xs">segmento</td><td className="p-2 text-nexus-muted">Texto</td><td className="p-2 font-mono text-xs">G2</td><td className="p-2 text-nexus-muted">Segmento de atuação</td></tr>
+                  <tr className="border-b border-nexus-border"><td className="p-2 font-mono text-xs">cargo</td><td className="p-2 text-nexus-muted">Texto</td><td className="p-2 font-mono text-xs">Operador</td><td className="p-2 text-nexus-muted">Cargo para vinculação automática à sub-RV</td></tr>
+                  <tr className="border-b border-nexus-border"><td className="p-2 font-mono text-xs">site</td><td className="p-2 text-nexus-muted">Texto</td><td className="p-2 font-mono text-xs">Mossoró</td><td className="p-2 text-nexus-muted">Site/unidade do colaborador</td></tr>
+                  <tr className="border-b border-nexus-border"><td className="p-2 font-mono text-xs">dsr</td><td className="p-2 text-nexus-muted">Número</td><td className="p-2 font-mono text-xs">25.5</td><td className="p-2 text-nexus-muted">% de DSR do colaborador (vem da base)</td></tr>
                   <tr><td className="p-2 font-mono text-xs">periodo</td><td className="p-2 text-nexus-muted">Texto</td><td className="p-2 font-mono text-xs">2025-12</td><td className="p-2 text-nexus-muted">Formato YYYY-MM</td></tr>
                 </tbody>
               </table>
@@ -269,6 +284,11 @@ export default function RVFontesConfig() {
   codigo_indicador,
   numerador,
   denominador,
+  operacao,
+  segmento,
+  cargo,
+  site,
+  dsr,
   periodo
 FROM sua_tabela
 WHERE periodo = '2025-12'`}
@@ -278,6 +298,9 @@ WHERE periodo = '2025-12'`}
                 <p>✓ Formato de período: YYYY-MM (ano-mês)</p>
                 <p>✓ Denominador não pode ser zero</p>
                 <p>✓ Códigos de indicadores devem existir no sistema</p>
+                <p>✓ <strong>cargo</strong> vincula automaticamente à sub-RV do colaborador</p>
+                <p>✓ <strong>dsr</strong> = percentual de DSR (vem direto da base, não mais nas regras)</p>
+                <p>✓ <strong>operacao</strong>, <strong>segmento</strong>, <strong>site</strong> = usados em regras condicionais</p>
               </div>
             </div>
           </div>
@@ -461,7 +484,7 @@ WHERE periodo = '2025-12'`}
                           onChange={(e) => setFormData({ ...formData, config: { ...formData.config, query: e.target.value } })}
                           className="w-full px-4 py-3 bg-white border border-blue-200 rounded-xl text-xs font-mono focus:outline-none focus:ring-2 focus:ring-blue-300"
                           rows={5}
-                          placeholder={'SELECT matricula, nome_colaborador,\n       codigo_indicador, numerador,\n       denominador, periodo\nFROM sua_tabela\nWHERE periodo = @periodo'}
+                          placeholder={'SELECT matricula, nome_colaborador,\n       codigo_indicador, numerador,\n       denominador, operacao, segmento,\n       cargo, site, dsr, periodo\nFROM sua_tabela\nWHERE periodo = @periodo'}
                         />
                         <p className="text-[10px] text-blue-600 mt-1.5 flex items-center gap-1"><Info size={12} /> A query deve retornar as colunas mapeadas na seção abaixo</p>
                       </div>
@@ -606,7 +629,8 @@ WHERE periodo = '2025-12'`}
                 </div>
                 <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl p-5 border border-purple-100">
                   <p className="text-xs text-purple-700 mb-4 flex items-center gap-1.5"><Info size={14} /> Informe o nome exato das colunas conforme aparecem na fonte de dados</p>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <p className="text-[10px] text-purple-600 mb-3 font-semibold uppercase">Colunas obrigatórias</p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-5">
                     <div>
                       <label className="block text-xs text-nexus-muted mb-1.5 font-semibold uppercase tracking-wide">Matrícula</label>
                       <input type="text" value={formData.mapeamento.coluna_matricula} onChange={(e) => setFormData({ ...formData, mapeamento: { ...formData.mapeamento, coluna_matricula: e.target.value } })} className="w-full px-4 py-2.5 bg-white border border-purple-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-300" placeholder="matricula" />
@@ -626,6 +650,34 @@ WHERE periodo = '2025-12'`}
                     <div>
                       <label className="block text-xs text-nexus-muted mb-1.5 font-semibold uppercase tracking-wide">Período</label>
                       <input type="text" value={formData.mapeamento.coluna_periodo} onChange={(e) => setFormData({ ...formData, mapeamento: { ...formData.mapeamento, coluna_periodo: e.target.value } })} className="w-full px-4 py-2.5 bg-white border border-purple-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-300" placeholder="periodo" />
+                    </div>
+                  </div>
+                  <p className="text-[10px] text-purple-600 mb-3 font-semibold uppercase">Colunas de perfil e condicionais</p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-xs text-nexus-muted mb-1.5 font-semibold uppercase tracking-wide">Cargo</label>
+                      <input type="text" value={formData.mapeamento.coluna_cargo} onChange={(e) => setFormData({ ...formData, mapeamento: { ...formData.mapeamento, coluna_cargo: e.target.value } })} className="w-full px-4 py-2.5 bg-white border border-purple-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-300" placeholder="cargo" />
+                      <p className="text-[9px] text-nexus-muted mt-1">Vincula à sub-RV (Operador, Supervisor…)</p>
+                    </div>
+                    <div>
+                      <label className="block text-xs text-nexus-muted mb-1.5 font-semibold uppercase tracking-wide">Operação</label>
+                      <input type="text" value={formData.mapeamento.coluna_operacao} onChange={(e) => setFormData({ ...formData, mapeamento: { ...formData.mapeamento, coluna_operacao: e.target.value } })} className="w-full px-4 py-2.5 bg-white border border-purple-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-300" placeholder="operacao" />
+                      <p className="text-[9px] text-nexus-muted mt-1">Usado em regras condicionais</p>
+                    </div>
+                    <div>
+                      <label className="block text-xs text-nexus-muted mb-1.5 font-semibold uppercase tracking-wide">Segmento</label>
+                      <input type="text" value={formData.mapeamento.coluna_segmento} onChange={(e) => setFormData({ ...formData, mapeamento: { ...formData.mapeamento, coluna_segmento: e.target.value } })} className="w-full px-4 py-2.5 bg-white border border-purple-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-300" placeholder="segmento" />
+                      <p className="text-[9px] text-nexus-muted mt-1">Usado em regras condicionais</p>
+                    </div>
+                    <div>
+                      <label className="block text-xs text-nexus-muted mb-1.5 font-semibold uppercase tracking-wide">Site</label>
+                      <input type="text" value={formData.mapeamento.coluna_site} onChange={(e) => setFormData({ ...formData, mapeamento: { ...formData.mapeamento, coluna_site: e.target.value } })} className="w-full px-4 py-2.5 bg-white border border-purple-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-300" placeholder="site" />
+                      <p className="text-[9px] text-nexus-muted mt-1">Unidade/localização do colaborador</p>
+                    </div>
+                    <div>
+                      <label className="block text-xs text-nexus-muted mb-1.5 font-semibold uppercase tracking-wide">DSR (%)</label>
+                      <input type="text" value={formData.mapeamento.coluna_dsr} onChange={(e) => setFormData({ ...formData, mapeamento: { ...formData.mapeamento, coluna_dsr: e.target.value } })} className="w-full px-4 py-2.5 bg-white border border-purple-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-300" placeholder="dsr" />
+                      <p className="text-[9px] text-nexus-muted mt-1">Percentual de DSR individual (vem da base)</p>
                     </div>
                   </div>
                 </div>

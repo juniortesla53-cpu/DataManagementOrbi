@@ -1161,4 +1161,216 @@ router.delete('/planos/:id', adminMiddleware, (req: Request, res: Response) => {
   res.json({ success: true });
 });
 
+// ════════════════════════════════════════
+// GRUPOS RV (hierarquia: Cliente → Grupo → Sub-RVs por Cargo)
+// ════════════════════════════════════════
+
+// GET /rv/grupos - List all groups with nested planos summary
+router.get('/grupos', (req, res) => {
+  const { id_cliente } = req.query;
+  let sql = `
+    SELECT g.*, c.nome as cliente_nome
+    FROM rv_grupo g
+    LEFT JOIN rv_clientes c ON c.id = g.id_cliente
+    WHERE 1=1
+  `;
+  const params: any[] = [];
+  if (id_cliente) { sql += ' AND g.id_cliente = ?'; params.push(id_cliente); }
+  sql += ' ORDER BY g.nome';
+  const grupos = db.prepare(sql).all(...params) as any[];
+
+  for (const g of grupos) {
+    g.planos = db.prepare(`
+      SELECT id, nome, tipo_cargo, tipo_calculo, id_plano_referencia, percentual_referencia, ativo
+      FROM rv_plano WHERE id_grupo = ? ORDER BY tipo_cargo
+    `).all(g.id);
+  }
+
+  res.json(grupos);
+});
+
+// GET /rv/grupos/:id - Full detail
+router.get('/grupos/:id', (req, res) => {
+  const grupo = db.prepare(`
+    SELECT g.*, c.nome as cliente_nome
+    FROM rv_grupo g LEFT JOIN rv_clientes c ON c.id = g.id_cliente
+    WHERE g.id = ?
+  `).get(req.params.id) as any;
+  if (!grupo) return res.status(404).json({ error: 'Grupo não encontrado' });
+
+  // Get all planos (sub-RVs) in this group with full detail
+  const planos = db.prepare('SELECT * FROM rv_plano WHERE id_grupo = ? ORDER BY tipo_cargo').all(grupo.id) as any[];
+
+  for (const plano of planos) {
+    plano.elegibilidade = db.prepare(`
+      SELECT e.*, i.codigo as indicador_codigo, i.nome as indicador_nome, i.unidade as indicador_unidade
+      FROM rv_plano_elegibilidade e
+      LEFT JOIN rv_indicadores_dim i ON i.id = e.id_indicador
+      WHERE e.id_plano = ? ORDER BY e.ordem
+    `).all(plano.id);
+
+    const remuneracao = db.prepare(`
+      SELECT r.*, i.codigo as indicador_codigo, i.nome as indicador_nome, i.unidade as indicador_unidade
+      FROM rv_plano_remuneracao r
+      JOIN rv_indicadores_dim i ON i.id = r.id_indicador
+      WHERE r.id_plano = ? ORDER BY r.ordem
+    `).all(plano.id) as any[];
+
+    for (const rem of remuneracao) {
+      rem.faixas = db.prepare('SELECT * FROM rv_plano_remuneracao_faixas WHERE id_remuneracao = ? ORDER BY ordem').all(rem.id);
+      rem.condicoes = db.prepare('SELECT * FROM rv_plano_remuneracao_condicoes WHERE id_remuneracao = ? ORDER BY ordem').all(rem.id);
+    }
+    plano.remuneracao = remuneracao;
+
+    const deflatores = db.prepare(`
+      SELECT d.*, i.codigo as indicador_codigo, i.nome as indicador_nome, i.unidade as indicador_unidade
+      FROM rv_plano_deflatores d
+      JOIN rv_indicadores_dim i ON i.id = d.id_indicador
+      WHERE d.id_plano = ? ORDER BY d.ordem
+    `).all(plano.id) as any[];
+    for (const def of deflatores) {
+      def.faixas = db.prepare('SELECT * FROM rv_plano_deflator_faixas WHERE id_deflator = ? ORDER BY ordem').all(def.id);
+    }
+    plano.deflatores = deflatores;
+  }
+
+  grupo.planos = planos;
+  res.json(grupo);
+});
+
+// POST /rv/grupos - Create group with nested planos
+router.post('/grupos', adminMiddleware, (req: Request, res: Response) => {
+  const { id_cliente, nome, descricao, vigencia_inicio, vigencia_fim, planos } = req.body;
+  if (!nome || !id_cliente) return res.status(400).json({ error: 'Nome e cliente são obrigatórios' });
+
+  const tx = db.transaction(() => {
+    const grupoResult = db.prepare(`
+      INSERT INTO rv_grupo (id_cliente, nome, descricao, vigencia_inicio, vigencia_fim) VALUES (?,?,?,?,?)
+    `).run(id_cliente, nome, descricao || null, vigencia_inicio || null, vigencia_fim || null);
+    const grupoId = grupoResult.lastInsertRowid as number;
+
+    if (Array.isArray(planos)) {
+      for (const p of planos) {
+        insertPlanoInGrupo(grupoId, p);
+      }
+    }
+    return grupoId;
+  });
+
+  try {
+    const grupoId = tx();
+    res.json({ id: grupoId });
+  } catch (e: any) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+// PUT /rv/grupos/:id - Update group + replace nested planos
+router.put('/grupos/:id', adminMiddleware, (req: Request, res: Response) => {
+  const grupoId = parseInt(req.params.id);
+  const { id_cliente, nome, descricao, vigencia_inicio, vigencia_fim, ativo, planos } = req.body;
+
+  const tx = db.transaction(() => {
+    db.prepare(`
+      UPDATE rv_grupo SET id_cliente=?, nome=?, descricao=?, vigencia_inicio=?, vigencia_fim=?, ativo=?, updated_at=CURRENT_TIMESTAMP WHERE id=?
+    `).run(id_cliente, nome, descricao || null, vigencia_inicio || null, vigencia_fim || null, ativo ?? 1, grupoId);
+
+    if (Array.isArray(planos)) {
+      // Get existing plano ids to delete
+      const existing = db.prepare('SELECT id FROM rv_plano WHERE id_grupo=?').all(grupoId) as any[];
+      for (const ex of existing) {
+        db.prepare('DELETE FROM rv_plano_elegibilidade WHERE id_plano=?').run(ex.id);
+        db.prepare('DELETE FROM rv_plano_remuneracao WHERE id_plano=?').run(ex.id);
+        db.prepare('DELETE FROM rv_plano_deflatores WHERE id_plano=?').run(ex.id);
+        db.prepare('DELETE FROM rv_plano WHERE id=?').run(ex.id);
+      }
+      for (const p of planos) {
+        insertPlanoInGrupo(grupoId, p);
+      }
+    }
+  });
+
+  try {
+    tx();
+    res.json({ success: true });
+  } catch (e: any) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+// DELETE /rv/grupos/:id
+router.delete('/grupos/:id', adminMiddleware, (req: Request, res: Response) => {
+  db.prepare('UPDATE rv_grupo SET ativo=0, updated_at=CURRENT_TIMESTAMP WHERE id=?').run(req.params.id);
+  db.prepare('UPDATE rv_plano SET ativo=0, updated_at=CURRENT_TIMESTAMP WHERE id_grupo=?').run(req.params.id);
+  res.json({ success: true });
+});
+
+// ── Helper: insert a plano (sub-RV) into a grupo ──
+function insertPlanoInGrupo(grupoId: number, p: any) {
+  const planoResult = db.prepare(`
+    INSERT INTO rv_plano (id_grupo, nome, descricao, tipo_cargo, tipo_calculo, id_plano_referencia, percentual_referencia, valor_dsr, teto_rv, vigencia_inicio, vigencia_fim, id_cliente)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
+  `).run(
+    grupoId, p.nome || `RV ${p.tipo_cargo}`, p.descricao || null,
+    p.tipo_cargo || 'operador', p.tipo_calculo || 'faixas',
+    p.id_plano_referencia || null, p.percentual_referencia || null,
+    p.valor_dsr || 0, p.teto_rv || null,
+    p.vigencia_inicio || null, p.vigencia_fim || null,
+    p.id_cliente || null
+  );
+  const planoId = planoResult.lastInsertRowid as number;
+
+  // Elegibilidade
+  if (Array.isArray(p.elegibilidade)) {
+    const insEleg = db.prepare(`
+      INSERT INTO rv_plano_elegibilidade (id_plano, id_indicador, operador, valor_minimo, campo, valor_texto, tipo_comparacao, ordem)
+      VALUES (?,?,?,?,?,?,?,?)
+    `);
+    p.elegibilidade.forEach((e: any, idx: number) => {
+      insEleg.run(planoId, e.id_indicador || null, e.operador || '>=', e.valor_minimo || 0,
+        e.campo || null, e.valor_texto || null, e.tipo_comparacao || 'indicador', idx);
+    });
+  }
+
+  // Remuneração + faixas + condições texto
+  if (Array.isArray(p.remuneracao)) {
+    const insRem = db.prepare('INSERT INTO rv_plano_remuneracao (id_plano, id_indicador, tem_regra_propria, ordem) VALUES (?,?,?,?)');
+    const insFaixa = db.prepare('INSERT INTO rv_plano_remuneracao_faixas (id_remuneracao, faixa_min, faixa_max, valor_payout, tipo_payout, ordem) VALUES (?,?,?,?,?,?)');
+    const insCond = db.prepare('INSERT INTO rv_plano_remuneracao_condicoes (id_remuneracao, campo, operador, valor, tipo, ordem) VALUES (?,?,?,?,?,?)');
+
+    p.remuneracao.forEach((r: any, idx: number) => {
+      const remResult = insRem.run(planoId, r.id_indicador, r.tem_regra_propria ? 1 : 0, idx);
+      const remId = remResult.lastInsertRowid as number;
+      if (Array.isArray(r.faixas)) {
+        r.faixas.forEach((f: any, fIdx: number) => {
+          insFaixa.run(remId, f.faixa_min, f.faixa_max || null, f.valor_payout, f.tipo_payout || 'valor_fixo', fIdx);
+        });
+      }
+      if (Array.isArray(r.condicoes)) {
+        r.condicoes.forEach((c: any, cIdx: number) => {
+          insCond.run(remId, c.campo, c.operador || '=', c.valor, c.tipo || 'texto', cIdx);
+        });
+      }
+    });
+  }
+
+  // Deflatores + faixas
+  if (Array.isArray(p.deflatores)) {
+    const insDef = db.prepare('INSERT INTO rv_plano_deflatores (id_plano, id_indicador, ordem) VALUES (?,?,?)');
+    const insDefFaixa = db.prepare('INSERT INTO rv_plano_deflator_faixas (id_deflator, faixa_min, faixa_max, percentual_reducao, ordem) VALUES (?,?,?,?,?)');
+
+    p.deflatores.forEach((d: any, idx: number) => {
+      const defResult = insDef.run(planoId, d.id_indicador, idx);
+      const defId = defResult.lastInsertRowid as number;
+      if (Array.isArray(d.faixas)) {
+        d.faixas.forEach((f: any, fIdx: number) => {
+          insDefFaixa.run(defId, f.faixa_min, f.faixa_max || null, f.percentual_reducao, fIdx);
+        });
+      }
+    });
+  }
+
+  return planoId;
+}
+
 export default router;
