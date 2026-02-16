@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import {
-  ChevronRight, ChevronLeft, Plus, Edit2, Trash2, X, Loader2,
+  ArrowDown, ArrowUp, Plus, Edit2, Trash2, X, Loader2,
   AlertCircle, Award, TrendingDown, Shield, ChevronDown, ChevronUp, Check,
   Users, FileText, Link2, Percent, Building2
 } from 'lucide-react';
@@ -649,12 +649,12 @@ export default function StepRegras({ clienteIds, regrasSelecionadas, setRegrasSe
       )}
 
       {/* Navigation */}
-      <div className="flex items-center justify-between pt-4 border-t border-nexus-border">
-        <button onClick={onBack} className="flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-nexus-muted hover:text-nexus-text border border-nexus-border rounded-xl hover:bg-nexus-bg transition-colors">
-          <ChevronLeft size={16} /> Voltar
+      <div className="flex flex-col items-center gap-2 pt-4 border-t border-nexus-border">
+        <button onClick={onNext} disabled={regrasSelecionadas.length === 0} className="flex items-center gap-2 px-8 py-3 btn-gradient rounded-xl text-sm font-semibold disabled:opacity-50 disabled:pointer-events-none shadow-lg shadow-purple-500/20 hover:shadow-purple-500/30 transition-all">
+          Avançar <ArrowDown size={16} />
         </button>
-        <button onClick={onNext} disabled={regrasSelecionadas.length === 0} className="flex items-center gap-2 px-6 py-2.5 btn-gradient rounded-xl text-sm font-semibold disabled:opacity-50 disabled:pointer-events-none">
-          Avançar <ChevronRight size={16} />
+        <button onClick={onBack} className="flex items-center gap-2 px-5 py-2 rounded-lg text-xs font-medium text-nexus-muted hover:text-nexus-text transition-colors">
+          <ArrowUp size={14} /> Voltar
         </button>
       </div>
 

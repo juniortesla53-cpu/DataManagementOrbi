@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Target, Plus, Edit2, Trash2, X, Loader2, ChevronRight, ChevronLeft, AlertCircle, Power, Database } from 'lucide-react';
+import { Target, Plus, Edit2, Trash2, X, Loader2, ArrowDown, ArrowUp, AlertCircle, Power, Database } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../../api';
 
@@ -208,16 +208,16 @@ export default function StepIndicadores({ clienteIds, onNext, onBack }: Props) {
       </div>
 
       {/* Navegação */}
-      <div className="flex justify-between">
-        <button onClick={onBack} className="flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium text-nexus-textSecondary bg-nexus-bg border border-nexus-border hover:border-nexus-muted transition-colors">
-          <ChevronLeft size={16} /> Voltar
-        </button>
+      <div className="flex flex-col items-center gap-2">
         <button
           onClick={onNext}
           disabled={ativos.length === 0}
-          className="flex items-center gap-2 px-6 py-2.5 btn-gradient rounded-lg text-sm font-semibold disabled:opacity-40 disabled:pointer-events-none"
+          className="flex items-center gap-2 px-8 py-3 btn-gradient rounded-xl text-sm font-semibold disabled:opacity-40 disabled:pointer-events-none shadow-lg shadow-purple-500/20 hover:shadow-purple-500/30 transition-all"
         >
-          Próximo <ChevronRight size={16} />
+          Próximo <ArrowDown size={16} />
+        </button>
+        <button onClick={onBack} className="flex items-center gap-2 px-5 py-2 rounded-lg text-xs font-medium text-nexus-muted hover:text-nexus-text transition-colors">
+          <ArrowUp size={14} /> Voltar
         </button>
       </div>
 

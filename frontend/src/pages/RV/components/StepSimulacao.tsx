@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
-  BarChart3, ChevronRight, ChevronLeft, Loader2, AlertCircle, CheckCircle,
+  BarChart3, Loader2, AlertCircle, CheckCircle,
   XCircle, Users, DollarSign, Award, Calendar, Play, Search, Filter,
   ArrowUpDown, ArrowUp, ArrowDown, TrendingUp, Percent, RefreshCw,
-  ChevronsLeft, ChevronsRight, ChevronDown
+  ChevronsLeft, ChevronsRight, ChevronDown, ChevronRight, ChevronLeft
 } from 'lucide-react';
 import api from '../../../api';
 import ExportButton from './ExportButton';
@@ -346,9 +346,9 @@ export default function StepSimulacao({
           )}
         </div>
 
-        <div className="flex justify-between">
-          <button onClick={onBack} className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium text-nexus-muted border border-nexus-border hover:bg-nexus-bg transition-colors">
-            <ChevronLeft size={16} /> Voltar
+        <div className="flex justify-center">
+          <button onClick={onBack} className="flex items-center gap-2 px-5 py-2 rounded-lg text-xs font-medium text-nexus-muted hover:text-nexus-text transition-colors">
+            <ArrowUp size={14} /> Voltar
           </button>
         </div>
       </div>
@@ -821,19 +821,19 @@ export default function StepSimulacao({
       </div>
 
       {/* ── Navigation ── */}
-      <div className="flex justify-between">
-        <button
-          onClick={() => { setSimulacao(null); setError(null); }}
-          className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium text-nexus-muted border border-nexus-border hover:bg-nexus-bg transition-colors"
-        >
-          <ChevronLeft size={16} /> Voltar
-        </button>
+      <div className="flex flex-col items-center gap-2">
         <button
           onClick={onNext}
           disabled={!simulacao}
-          className="flex items-center gap-2 px-6 py-2.5 btn-gradient rounded-xl text-sm font-semibold disabled:opacity-40"
+          className="flex items-center gap-2 px-8 py-3 btn-gradient rounded-xl text-sm font-semibold disabled:opacity-40 shadow-lg shadow-purple-500/20 hover:shadow-purple-500/30 transition-all"
         >
-          Avançar <ChevronRight size={16} />
+          Avançar <ArrowDown size={16} />
+        </button>
+        <button
+          onClick={() => { setSimulacao(null); setError(null); }}
+          className="flex items-center gap-2 px-5 py-2 rounded-lg text-xs font-medium text-nexus-muted hover:text-nexus-text transition-colors"
+        >
+          <ArrowUp size={14} /> Voltar
         </button>
       </div>
     </div>

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Building2, Plus, Edit2, X, Loader2, ChevronRight, Search, AlertCircle, CheckCircle } from 'lucide-react';
+import { Building2, Plus, Edit2, X, Loader2, ArrowDown, Search, AlertCircle, CheckCircle } from 'lucide-react';
 import api from '../../../api';
 
 interface Props {
@@ -220,13 +220,13 @@ export default function StepCliente({ clientesSelecionados, setClientesSeleciona
       </div>
 
       {/* Navegação */}
-      <div className="flex justify-end">
+      <div className="flex justify-center">
         <button
           onClick={onNext}
           disabled={clientesSelecionados.length === 0}
-          className="flex items-center gap-2 px-6 py-2.5 btn-gradient rounded-lg text-sm font-semibold disabled:opacity-40 disabled:pointer-events-none"
+          className="flex items-center gap-2 px-8 py-3 btn-gradient rounded-xl text-sm font-semibold disabled:opacity-40 disabled:pointer-events-none shadow-lg shadow-purple-500/20 hover:shadow-purple-500/30 transition-all"
         >
-          Próximo <ChevronRight size={16} />
+          Próximo <ArrowDown size={16} />
         </button>
       </div>
 
