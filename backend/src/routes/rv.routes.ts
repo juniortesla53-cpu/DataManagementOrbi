@@ -463,7 +463,7 @@ function executarCalculoRV(periodo: string, regraIds?: number[]) {
 }
 
 // ════════════════════════════════════════
-// POST /simular — Dry-run (sem persistir)
+// POST /simular — Dry-run (sem persistir) — LEGACY
 // ════════════════════════════════════════
 router.post('/simular', adminMiddleware, (req: Request, res: Response) => {
   const { periodo, regraIds } = req.body;
@@ -475,6 +475,239 @@ router.post('/simular', adminMiddleware, (req: Request, res: Response) => {
   }
   res.json(resultado);
 });
+
+// ════════════════════════════════════════
+// POST /simular-grupo — Simulação baseada em rv_grupo / rv_plano
+// ════════════════════════════════════════
+router.post('/simular-grupo', adminMiddleware, (req: Request, res: Response) => {
+  const { periodo, grupoIds } = req.body;
+  if (!periodo) return res.status(400).json({ error: 'Período é obrigatório' });
+  if (!grupoIds || !Array.isArray(grupoIds) || grupoIds.length === 0) {
+    return res.status(400).json({ error: 'Selecione ao menos um grupo de regras' });
+  }
+
+  try {
+    const resultado = executarSimulacaoGrupo(periodo, grupoIds);
+    if ('error' in resultado) return res.status(400).json({ error: resultado.error });
+    res.json(resultado);
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+function executarSimulacaoGrupo(periodo: string, grupoIds: number[]) {
+  // ── 1. Buscar matrículas com dados no período ──
+  const matriculas = db.prepare('SELECT DISTINCT matricula FROM rv_indicadores_fato WHERE data=?').all(periodo) as any[];
+  if (matriculas.length === 0) return { error: `Nenhum dado encontrado para o período ${periodo}` };
+
+  // ── 2. Buscar todos os indicadores ──
+  const todosIndicadores = db.prepare('SELECT * FROM rv_indicadores_dim WHERE ativo=1').all() as any[];
+
+  // ── 3. Carregar planos dos grupos selecionados ──
+  const placeholders = grupoIds.map(() => '?').join(',');
+  const planos = db.prepare(`
+    SELECT p.*, g.nome as grupo_nome, g.id_cliente
+    FROM rv_plano p
+    JOIN rv_grupo g ON g.id = p.id_grupo
+    WHERE p.id_grupo IN (${placeholders}) AND p.ativo = 1
+    ORDER BY p.tipo_cargo
+  `).all(...grupoIds) as any[];
+
+  if (planos.length === 0) return { error: 'Nenhum plano ativo nos grupos selecionados' };
+
+  // Carregar dados nested de cada plano
+  for (const plano of planos) {
+    plano.elegibilidade = db.prepare(`
+      SELECT e.*, i.codigo as indicador_codigo, i.nome as indicador_nome, i.unidade as indicador_unidade, i.tipo as indicador_tipo
+      FROM rv_plano_elegibilidade e
+      LEFT JOIN rv_indicadores_dim i ON i.id = e.id_indicador
+      WHERE e.id_plano = ? ORDER BY e.ordem
+    `).all(plano.id);
+
+    const remuneracao = db.prepare(`
+      SELECT r.*, i.codigo as indicador_codigo, i.nome as indicador_nome, i.unidade as indicador_unidade, i.tipo as indicador_tipo
+      FROM rv_plano_remuneracao r
+      JOIN rv_indicadores_dim i ON i.id = r.id_indicador
+      WHERE r.id_plano = ? AND r.tem_regra_propria = 1 ORDER BY r.ordem
+    `).all(plano.id) as any[];
+    for (const rem of remuneracao) {
+      rem.faixas = db.prepare('SELECT * FROM rv_plano_remuneracao_faixas WHERE id_remuneracao = ? ORDER BY ordem').all(rem.id);
+      rem.condicoes = db.prepare('SELECT * FROM rv_plano_remuneracao_condicoes WHERE id_remuneracao = ? ORDER BY ordem').all(rem.id);
+    }
+    plano.remuneracao = remuneracao;
+
+    const deflatores = db.prepare(`
+      SELECT d.*, i.codigo as indicador_codigo, i.nome as indicador_nome
+      FROM rv_plano_deflatores d JOIN rv_indicadores_dim i ON i.id = d.id_indicador
+      WHERE d.id_plano = ? ORDER BY d.ordem
+    `).all(plano.id) as any[];
+    for (const def of deflatores) {
+      def.faixas = db.prepare('SELECT * FROM rv_plano_deflator_faixas WHERE id_deflator = ? ORDER BY ordem').all(def.id);
+    }
+    plano.deflatores = deflatores;
+  }
+
+  // ── 4. Resolver ordem de cálculo (dependências percentual_rv / valor_rv) ──
+  const faixasPlanos = planos.filter(p => p.tipo_calculo === 'faixas');
+  const depPlanos = planos.filter(p => p.tipo_calculo === 'percentual_rv' || p.tipo_calculo === 'valor_rv');
+  const fatPlanos = planos.filter(p => p.tipo_calculo === 'percentual_faturamento');
+  const orderedPlanos = [...faixasPlanos, ...fatPlanos, ...depPlanos];
+
+  // ── 5. Calcular para cada matrícula ──
+  const colaboradores: any[] = [];
+  const resultados: any[] = [];
+  const rvPorPlano: Record<string, Record<number, number>> = {}; // planoId -> { matriculaHash -> valorRV }
+
+  for (const { matricula } of matriculas) {
+    const userRow = db.prepare('SELECT nome_completo, cargo FROM users WHERE matricula=?').get(matricula) as any;
+    const nomeColab = userRow?.nome_completo || matricula;
+    const cargoColab = userRow?.cargo || '';
+
+    // Indicadores do colaborador
+    const indicadoresColab: Record<number, { valor: number; numerador: number; denominador: number }> = {};
+    for (const ind of todosIndicadores) {
+      const fato = db.prepare('SELECT numerador, denominador FROM rv_indicadores_fato WHERE data=? AND matricula=? AND id_indicador=?')
+        .get(periodo, matricula, ind.id) as any;
+      if (fato) {
+        let valor: number;
+        if (ind.tipo === 'percentual') {
+          valor = fato.denominador !== 0 ? Math.round((fato.numerador / fato.denominador) * 100 * 100) / 100 : 0;
+        } else if (ind.tipo === 'quantidade' || ind.tipo === 'valor') {
+          // Tentar achar meta
+          const metaDim = db.prepare("SELECT id FROM rv_indicadores_dim WHERE codigo='META_' || ?").get(ind.codigo) as any;
+          if (metaDim) {
+            const metaFato = db.prepare('SELECT numerador FROM rv_indicadores_fato WHERE data=? AND matricula=? AND id_indicador=?')
+              .get(periodo, matricula, metaDim.id) as any;
+            valor = metaFato && metaFato.numerador > 0 ? Math.round((fato.numerador / metaFato.numerador) * 100 * 100) / 100 : fato.numerador;
+          } else {
+            valor = fato.numerador;
+          }
+        } else {
+          valor = fato.denominador !== 0 ? Math.round((fato.numerador / fato.denominador) * 100 * 100) / 100 : 0;
+        }
+        indicadoresColab[ind.id] = { valor, numerador: fato.numerador, denominador: fato.denominador };
+      }
+    }
+
+    const planosColab: any[] = [];
+    let totalColabRV = 0;
+
+    for (const plano of orderedPlanos) {
+      // ── Elegibilidade ──
+      let elegOk = true;
+      const detalhesEleg: any[] = [];
+      for (const e of plano.elegibilidade) {
+        if ((e.tipo_comparacao || 'indicador') === 'indicador' && e.id_indicador) {
+          const indData = indicadoresColab[e.id_indicador];
+          const val = indData?.valor ?? null;
+          const passou = val !== null && avaliarCondicao(e.operador, val, e.valor_minimo);
+          detalhesEleg.push({ tipo: 'indicador', indicador: e.indicador_codigo, operador: e.operador, ref: e.valor_minimo, valor: val, passou });
+          if (!passou) elegOk = false;
+        }
+        // Campo texto: skip for now (needs data source integration)
+      }
+
+      let valorRV = 0;
+      const detalhesRem: any[] = [];
+
+      if (elegOk) {
+        if (plano.tipo_calculo === 'faixas') {
+          // Calcular soma de payouts de todos os indicadores com regra
+          for (const rem of plano.remuneracao) {
+            const indData = indicadoresColab[rem.id_indicador];
+            const valorInd = indData?.valor ?? null;
+            const faixa = valorInd !== null ? encontrarFaixa(rem.faixas, valorInd) : null;
+            const payout = faixa ? faixa.valor_payout : 0;
+            detalhesRem.push({
+              indicador_codigo: rem.indicador_codigo, indicador_nome: rem.indicador_nome,
+              valor_indicador: valorInd, faixa: faixa ? { min: faixa.faixa_min, max: faixa.faixa_max, payout: faixa.valor_payout, tipo: faixa.tipo_payout } : null,
+              payout, condicoes: rem.condicoes || [],
+            });
+            valorRV += payout;
+          }
+
+          // Aplicar teto
+          if (plano.teto_rv && valorRV > plano.teto_rv) valorRV = plano.teto_rv;
+
+          // Aplicar deflatores
+          for (const def of plano.deflatores) {
+            const indData = indicadoresColab[def.id_indicador];
+            if (indData) {
+              const defFaixa = encontrarFaixa(def.faixas, indData.valor);
+              if (defFaixa) {
+                const reducao = valorRV * (defFaixa.percentual_reducao / 100);
+                valorRV = Math.max(0, valorRV - reducao);
+              }
+            }
+          }
+        } else if (plano.tipo_calculo === 'percentual_rv' || plano.tipo_calculo === 'valor_rv') {
+          // Buscar valor da RV referenciada (pelo tipo_cargo)
+          const refCargo = plano.id_plano_referencia_cargo || plano.tipo_cargo;
+          // Buscar no mesmo grupo o plano do cargo referenciado
+          const refPlano = planos.find(p => p.id_grupo === plano.id_grupo && p.tipo_cargo !== plano.tipo_cargo && p.tipo_calculo === 'faixas');
+          if (refPlano && rvPorPlano[refPlano.id]) {
+            const refValor = rvPorPlano[refPlano.id][matriculas.indexOf({ matricula } as any)] || 0;
+            if (plano.tipo_calculo === 'percentual_rv') {
+              valorRV = refValor * ((plano.percentual_referencia || 0) / 100);
+            } else {
+              valorRV = refValor;
+            }
+          }
+        } else if (plano.tipo_calculo === 'percentual_faturamento') {
+          // Placeholder — faturamento virá de outra fonte
+          valorRV = 0;
+        }
+      }
+
+      // Guardar resultado para dependências
+      if (!rvPorPlano[plano.id]) rvPorPlano[plano.id] = {};
+      rvPorPlano[plano.id][matriculas.findIndex(m => m.matricula === matricula)] = valorRV;
+
+      valorRV = Math.round(valorRV * 100) / 100;
+
+      const tipoCargo = plano.tipo_cargo;
+      const tipoCalculo = plano.tipo_calculo;
+
+      planosColab.push({
+        id_plano: plano.id, grupo_nome: plano.grupo_nome, tipo_cargo: tipoCargo,
+        tipo_calculo: tipoCalculo, nome: plano.nome,
+        elegibilidade_ok: elegOk, elegibilidade: detalhesEleg,
+        remuneracao: detalhesRem, valor_rv: valorRV,
+      });
+
+      totalColabRV += valorRV;
+
+      resultados.push({
+        matricula, nome_colaborador: nomeColab, cargo: cargoColab,
+        id_plano: plano.id, plano_nome: plano.nome, tipo_cargo: tipoCargo,
+        tipo_calculo: tipoCalculo, elegibilidade_ok: elegOk,
+        valor_rv: valorRV,
+      });
+    }
+
+    colaboradores.push({
+      matricula, nome: nomeColab, cargo: cargoColab,
+      planos: planosColab, total_rv: Math.round(totalColabRV * 100) / 100,
+    });
+  }
+
+  const totalRV = Math.round(colaboradores.reduce((s, c) => s + c.total_rv, 0) * 100) / 100;
+
+  // Resumo por plano (sub-RV)
+  const resumoPlanos = orderedPlanos.map(p => ({
+    id: p.id, nome: p.nome, tipo_cargo: p.tipo_cargo, tipo_calculo: p.tipo_calculo,
+    total: Math.round(colaboradores.reduce((s, c) => {
+      const pc = c.planos.find((cp: any) => cp.id_plano === p.id);
+      return s + (pc?.valor_rv || 0);
+    }, 0) * 100) / 100,
+  }));
+
+  return {
+    periodo, totalRV, totalColaboradores: matriculas.length,
+    totalPlanos: orderedPlanos.length,
+    resumoPlanos, colaboradores, resultados,
+  };
+}
 
 // ════════════════════════════════════════
 // GET /colaboradores-periodo — Dados dos colaboradores no período
