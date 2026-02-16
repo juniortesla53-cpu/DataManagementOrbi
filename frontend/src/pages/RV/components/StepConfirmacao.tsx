@@ -26,9 +26,9 @@ export default function StepConfirmacao({ clienteId, periodo, regrasSelecionadas
   const salvar = async () => {
     setSalvando(true);
     try {
-      const { data } = await api.post('/rv/calcular', {
+      const { data } = await api.post('/rv/calcular-grupo', {
         periodo,
-        regraIds: regrasSelecionadas,
+        grupoIds: regrasSelecionadas,
         observacoes: observacoes.trim() || undefined,
         id_cliente: clienteId,
       });
@@ -63,8 +63,8 @@ export default function StepConfirmacao({ clienteId, periodo, regrasSelecionadas
               <p className="text-[10px] text-nexus-muted">Colaboradores</p>
             </div>
             <div className="bg-nexus-bg rounded-lg p-3">
-              <p className="text-lg font-bold text-nexus-text">{resultado?.totalRegras}</p>
-              <p className="text-[10px] text-nexus-muted">Regras</p>
+              <p className="text-lg font-bold text-nexus-text">{resultado?.totalPlanos}</p>
+              <p className="text-[10px] text-nexus-muted">Sub-RVs</p>
             </div>
             <div className="bg-nexus-bg rounded-lg p-3">
               <p className="text-lg font-bold text-emerald-600">
@@ -114,7 +114,7 @@ export default function StepConfirmacao({ clienteId, periodo, regrasSelecionadas
     );
   }
 
-  const { colaboradores, totalRV, totalColaboradores, totalRegras, regrasUsadas } = simulacao || {};
+  const { colaboradores, totalRV, totalColaboradores, totalPlanos, resumoPlanos } = simulacao || {};
 
   return (
     <div className="space-y-5 animate-fadeIn">
@@ -150,8 +150,8 @@ export default function StepConfirmacao({ clienteId, periodo, regrasSelecionadas
                 <Award size={16} className="text-amber-600" />
               </div>
               <div>
-                <p className="text-xs text-nexus-muted">Regras</p>
-                <p className="text-sm font-bold text-nexus-text">{totalRegras}</p>
+                <p className="text-xs text-nexus-muted">Sub-RVs</p>
+                <p className="text-sm font-bold text-nexus-text">{totalPlanos}</p>
               </div>
             </div>
             <div className="flex items-center gap-3">
@@ -167,13 +167,13 @@ export default function StepConfirmacao({ clienteId, periodo, regrasSelecionadas
             </div>
           </div>
 
-          {/* Regras usadas */}
+          {/* Planos usados */}
           <div className="mb-4">
-            <p className="text-xs font-semibold text-nexus-muted uppercase tracking-wide mb-2">Regras aplicadas</p>
+            <p className="text-xs font-semibold text-nexus-muted uppercase tracking-wide mb-2">Sub-RVs aplicados</p>
             <div className="flex flex-wrap gap-2">
-              {(regrasUsadas || []).map((r: any) => (
-                <span key={r.id} className="text-xs px-3 py-1 rounded-full bg-purple-100 text-nexus-purple font-medium">
-                  {r.nome}
+              {(resumoPlanos || []).map((p: any) => (
+                <span key={p.id} className="text-xs px-3 py-1 rounded-full bg-purple-100 text-nexus-purple font-medium">
+                  {p.nome}
                 </span>
               ))}
             </div>
@@ -185,11 +185,13 @@ export default function StepConfirmacao({ clienteId, periodo, regrasSelecionadas
               data={(colaboradores || []).map((c: any) => ({
                 matricula: c.matricula,
                 nome: c.nome,
+                cargo: c.cargo,
                 total_rv: c.total_rv || 0
               }))}
               columns={[
                 { key: 'matricula', label: 'Matrícula' },
                 { key: 'nome', label: 'Colaborador' },
+                { key: 'cargo', label: 'Cargo' },
                 { key: 'total_rv', label: 'Total RV (R$)' }
               ]}
               filename={`rv_resultados_${periodo}`}
@@ -201,6 +203,7 @@ export default function StepConfirmacao({ clienteId, periodo, regrasSelecionadas
                 <tr className="bg-nexus-bg border-b border-nexus-border">
                   <th className="text-left p-3 font-semibold text-nexus-muted text-xs">Colaborador</th>
                   <th className="text-left p-3 font-semibold text-nexus-muted text-xs">Matrícula</th>
+                  <th className="text-left p-3 font-semibold text-nexus-muted text-xs">Cargo</th>
                   <th className="text-right p-3 font-semibold text-nexus-muted text-xs">Total RV</th>
                 </tr>
               </thead>
@@ -209,6 +212,7 @@ export default function StepConfirmacao({ clienteId, periodo, regrasSelecionadas
                   <tr key={c.matricula} className={`border-b border-nexus-borderLight ${i % 2 === 0 ? '' : 'bg-nexus-bg/30'}`}>
                     <td className="p-3 font-medium text-nexus-text">{c.nome}</td>
                     <td className="p-3 text-nexus-textSecondary">{c.matricula}</td>
+                    <td className="p-3 text-nexus-textSecondary">{c.cargo}</td>
                     <td className={`p-3 text-right font-bold ${c.total_rv > 0 ? 'text-emerald-600' : 'text-nexus-muted'}`}>
                       R$ {(c.total_rv || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                     </td>
@@ -217,7 +221,7 @@ export default function StepConfirmacao({ clienteId, periodo, regrasSelecionadas
               </tbody>
               <tfoot>
                 <tr className="bg-gradient-to-r from-purple-50 to-blue-50 font-bold">
-                  <td colSpan={2} className="p-3 text-nexus-text">TOTAL</td>
+                  <td colSpan={3} className="p-3 text-nexus-text">TOTAL</td>
                   <td className="p-3 text-right text-nexus-purple text-base">
                     R$ {(totalRV || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                   </td>

@@ -495,6 +495,28 @@ router.post('/simular-grupo', adminMiddleware, (req: Request, res: Response) => 
   }
 });
 
+// Topological sort: resolve dependencies properly
+function topoSortPlanos(planos: any[]): any[] {
+  const idMap = new Map<number, any>();
+  for (const p of planos) idMap.set(p.id, p);
+  
+  const visited = new Set<number>();
+  const sorted: any[] = [];
+  
+  function visit(plano: any) {
+    if (visited.has(plano.id)) return;
+    visited.add(plano.id);
+    // If this plano depends on another, visit the dependency first
+    if (plano.id_plano_referencia && idMap.has(plano.id_plano_referencia)) {
+      visit(idMap.get(plano.id_plano_referencia)!);
+    }
+    sorted.push(plano);
+  }
+  
+  for (const p of planos) visit(p);
+  return sorted;
+}
+
 function executarSimulacaoGrupo(periodo: string, grupoIds: number[]) {
   // ── 1. Buscar matrículas com dados no período ──
   const matriculas = db.prepare('SELECT DISTINCT matricula FROM rv_indicadores_fato WHERE data=?').all(periodo) as any[];
@@ -548,15 +570,13 @@ function executarSimulacaoGrupo(periodo: string, grupoIds: number[]) {
   }
 
   // ── 4. Resolver ordem de cálculo (dependências percentual_rv / valor_rv) ──
-  const faixasPlanos = planos.filter(p => p.tipo_calculo === 'faixas');
-  const depPlanos = planos.filter(p => p.tipo_calculo === 'percentual_rv' || p.tipo_calculo === 'valor_rv');
-  const fatPlanos = planos.filter(p => p.tipo_calculo === 'percentual_faturamento');
-  const orderedPlanos = [...faixasPlanos, ...fatPlanos, ...depPlanos];
+  const orderedPlanos = topoSortPlanos(planos);
 
   // ── 5. Calcular para cada matrícula ──
   const colaboradores: any[] = [];
   const resultados: any[] = [];
-  const rvPorPlano: Record<string, Record<number, number>> = {}; // planoId -> { matriculaHash -> valorRV }
+  // planoId -> matricula -> valorRV (para resolver referências entre sub-RVs)
+  const rvPorPlano: Record<number, Record<string, number>> = {};
 
   for (const { matricula } of matriculas) {
     const userRow = db.prepare('SELECT nome_completo, cargo FROM users WHERE matricula=?').get(matricula) as any;
@@ -573,7 +593,6 @@ function executarSimulacaoGrupo(periodo: string, grupoIds: number[]) {
         if (ind.tipo === 'percentual') {
           valor = fato.denominador !== 0 ? Math.round((fato.numerador / fato.denominador) * 100 * 100) / 100 : 0;
         } else if (ind.tipo === 'quantidade' || ind.tipo === 'valor') {
-          // Tentar achar meta
           const metaDim = db.prepare("SELECT id FROM rv_indicadores_dim WHERE codigo='META_' || ?").get(ind.codigo) as any;
           if (metaDim) {
             const metaFato = db.prepare('SELECT numerador FROM rv_indicadores_fato WHERE data=? AND matricula=? AND id_indicador=?')
@@ -604,15 +623,24 @@ function executarSimulacaoGrupo(periodo: string, grupoIds: number[]) {
           detalhesEleg.push({ tipo: 'indicador', indicador: e.indicador_codigo, operador: e.operador, ref: e.valor_minimo, valor: val, passou });
           if (!passou) elegOk = false;
         }
-        // Campo texto: skip for now (needs data source integration)
+        // Campo texto elegibilidade: comparação com perfil do colaborador
+        if ((e.tipo_comparacao) === 'campo' && e.campo) {
+          // Buscar valor do campo no perfil do colaborador (users table ou data source)
+          const userField = db.prepare(`SELECT ${e.campo} FROM users WHERE matricula=?`).get(matricula) as any;
+          const valorCampo = userField?.[e.campo] ?? '';
+          const passou = String(valorCampo).toLowerCase() === String(e.valor_texto).toLowerCase();
+          detalhesEleg.push({ tipo: 'campo', indicador: e.campo, operador: '=', ref: e.valor_texto, valor: valorCampo, passou });
+          if (!passou) elegOk = false;
+        }
       }
 
       let valorRV = 0;
       const detalhesRem: any[] = [];
 
       if (elegOk) {
+        // ── Cálculo por tipo ──
         if (plano.tipo_calculo === 'faixas') {
-          // Calcular soma de payouts de todos os indicadores com regra
+          // Soma de payouts de todos os indicadores com regra
           for (const rem of plano.remuneracao) {
             const indData = indicadoresColab[rem.id_indicador];
             const valorInd = indData?.valor ?? null;
@@ -625,52 +653,75 @@ function executarSimulacaoGrupo(periodo: string, grupoIds: number[]) {
             });
             valorRV += payout;
           }
-
-          // Aplicar teto
-          if (plano.teto_rv && valorRV > plano.teto_rv) valorRV = plano.teto_rv;
-
-          // Aplicar deflatores
-          for (const def of plano.deflatores) {
-            const indData = indicadoresColab[def.id_indicador];
-            if (indData) {
-              const defFaixa = encontrarFaixa(def.faixas, indData.valor);
-              if (defFaixa) {
-                const reducao = valorRV * (defFaixa.percentual_reducao / 100);
-                valorRV = Math.max(0, valorRV - reducao);
-              }
-            }
-          }
         } else if (plano.tipo_calculo === 'percentual_rv' || plano.tipo_calculo === 'valor_rv') {
-          // Buscar valor da RV referenciada (pelo tipo_cargo)
-          const refCargo = plano.id_plano_referencia_cargo || plano.tipo_cargo;
-          // Buscar no mesmo grupo o plano do cargo referenciado
-          const refPlano = planos.find(p => p.id_grupo === plano.id_grupo && p.tipo_cargo !== plano.tipo_cargo && p.tipo_calculo === 'faixas');
-          if (refPlano && rvPorPlano[refPlano.id]) {
-            const refValor = rvPorPlano[refPlano.id][matriculas.indexOf({ matricula } as any)] || 0;
-            if (plano.tipo_calculo === 'percentual_rv') {
-              valorRV = refValor * ((plano.percentual_referencia || 0) / 100);
-            } else {
-              valorRV = refValor;
+          const refPlanoId = plano.id_plano_referencia;
+          let refValor = 0;
+          let refPlanoNome = '';
+          if (refPlanoId) {
+            refValor = rvPorPlano[refPlanoId]?.[matricula] || 0;
+            const refPlano = orderedPlanos.find((p: any) => p.id === refPlanoId);
+            refPlanoNome = refPlano?.nome || `Plano #${refPlanoId}`;
+          }
+          if (plano.tipo_calculo === 'percentual_rv') {
+            valorRV = refValor * ((plano.percentual_referencia || 0) / 100);
+          } else {
+            valorRV = refValor;
+          }
+          detalhesRem.push({
+            indicador_codigo: `REF_${refPlanoId || 'RV'}`,
+            indicador_nome: `Referência: ${refPlanoNome}`,
+            valor_indicador: refValor,
+            faixa: null,
+            payout: valorRV,
+            condicoes: [],
+          });
+        } else if (plano.tipo_calculo === 'percentual_faturamento') {
+          // Usar primeiro indicador da remuneração como base de faturamento (numerador = R$)
+          let baseFaturamento = 0;
+          if (plano.remuneracao && plano.remuneracao.length > 0) {
+            const indFat = plano.remuneracao[0];
+            const indData = indicadoresColab[indFat.id_indicador];
+            if (indData) {
+              baseFaturamento = indData.numerador; // valor bruto em R$
+            }
+            detalhesRem.push({
+              indicador_codigo: indFat.indicador_codigo,
+              indicador_nome: indFat.indicador_nome || 'Faturamento',
+              valor_indicador: baseFaturamento,
+              faixa: null,
+              payout: 0, // preenchido abaixo
+              condicoes: indFat.condicoes || [],
+            });
+          }
+          valorRV = baseFaturamento * ((plano.percentual_referencia || 0) / 100);
+          if (detalhesRem.length > 0) detalhesRem[detalhesRem.length - 1].payout = valorRV;
+        }
+
+        // ── Aplicar teto (todos os tipos) ──
+        if (plano.teto_rv && valorRV > plano.teto_rv) valorRV = plano.teto_rv;
+
+        // ── Aplicar deflatores (todos os tipos) ──
+        for (const def of plano.deflatores) {
+          const indData = indicadoresColab[def.id_indicador];
+          if (indData) {
+            const defFaixa = encontrarFaixa(def.faixas, indData.valor);
+            if (defFaixa) {
+              const reducao = valorRV * (defFaixa.percentual_reducao / 100);
+              valorRV = Math.max(0, valorRV - reducao);
             }
           }
-        } else if (plano.tipo_calculo === 'percentual_faturamento') {
-          // Placeholder — faturamento virá de outra fonte
-          valorRV = 0;
         }
       }
 
-      // Guardar resultado para dependências
+      // Guardar resultado para dependências entre sub-RVs
       if (!rvPorPlano[plano.id]) rvPorPlano[plano.id] = {};
-      rvPorPlano[plano.id][matriculas.findIndex(m => m.matricula === matricula)] = valorRV;
+      rvPorPlano[plano.id][matricula] = valorRV;
 
       valorRV = Math.round(valorRV * 100) / 100;
 
-      const tipoCargo = plano.tipo_cargo;
-      const tipoCalculo = plano.tipo_calculo;
-
       planosColab.push({
-        id_plano: plano.id, grupo_nome: plano.grupo_nome, tipo_cargo: tipoCargo,
-        tipo_calculo: tipoCalculo, nome: plano.nome,
+        id_plano: plano.id, grupo_nome: plano.grupo_nome, tipo_cargo: plano.tipo_cargo,
+        tipo_calculo: plano.tipo_calculo, nome: plano.nome,
         elegibilidade_ok: elegOk, elegibilidade: detalhesEleg,
         remuneracao: detalhesRem, valor_rv: valorRV,
       });
@@ -679,9 +730,12 @@ function executarSimulacaoGrupo(periodo: string, grupoIds: number[]) {
 
       resultados.push({
         matricula, nome_colaborador: nomeColab, cargo: cargoColab,
-        id_plano: plano.id, plano_nome: plano.nome, tipo_cargo: tipoCargo,
-        tipo_calculo: tipoCalculo, elegibilidade_ok: elegOk,
+        id_plano: plano.id, plano_nome: plano.nome, grupo_nome: plano.grupo_nome,
+        tipo_cargo: plano.tipo_cargo, tipo_calculo: plano.tipo_calculo,
+        elegibilidade_ok: elegOk,
+        valor_indicador: detalhesRem.length > 0 ? detalhesRem[0].valor_indicador : null,
         valor_rv: valorRV,
+        detalhes: { elegibilidade: detalhesEleg, remuneracao: detalhesRem },
       });
     }
 
@@ -691,12 +745,12 @@ function executarSimulacaoGrupo(periodo: string, grupoIds: number[]) {
     });
   }
 
-  const totalRV = Math.round(colaboradores.reduce((s, c) => s + c.total_rv, 0) * 100) / 100;
+  const totalRV = Math.round(colaboradores.reduce((s: number, c: any) => s + c.total_rv, 0) * 100) / 100;
 
   // Resumo por plano (sub-RV)
-  const resumoPlanos = orderedPlanos.map(p => ({
+  const resumoPlanos = orderedPlanos.map((p: any) => ({
     id: p.id, nome: p.nome, tipo_cargo: p.tipo_cargo, tipo_calculo: p.tipo_calculo,
-    total: Math.round(colaboradores.reduce((s, c) => {
+    total: Math.round(colaboradores.reduce((s: number, c: any) => {
       const pc = c.planos.find((cp: any) => cp.id_plano === p.id);
       return s + (pc?.valor_rv || 0);
     }, 0) * 100) / 100,
@@ -802,6 +856,69 @@ router.post('/calcular', adminMiddleware, (req: Request, res: Response) => {
 });
 
 // ════════════════════════════════════════
+// POST /calcular-grupo — Persiste cálculo baseado em rv_grupo/rv_plano
+// ════════════════════════════════════════
+router.post('/calcular-grupo', adminMiddleware, (req: Request, res: Response) => {
+  const { periodo, grupoIds, observacoes, id_cliente } = req.body;
+  if (!periodo) return res.status(400).json({ error: 'Período é obrigatório' });
+  if (!grupoIds || !Array.isArray(grupoIds) || grupoIds.length === 0) {
+    return res.status(400).json({ error: 'Selecione ao menos um grupo de regras' });
+  }
+
+  try {
+    const user = (req as any).user;
+    const resultado = executarSimulacaoGrupo(periodo, grupoIds);
+
+    if ('error' in resultado && typeof resultado.error === 'string') {
+      return res.status(400).json({ error: resultado.error });
+    }
+
+    // Persistir cálculo
+    const calculo = db.prepare(
+      'INSERT INTO rv_calculos (periodo, calculado_por, observacoes, id_cliente, tipo, grupo_ids) VALUES (?,?,?,?,?,?)'
+    ).run(periodo, user.nome || user.login, observacoes || null, id_cliente || null, 'grupo', JSON.stringify(grupoIds));
+    const calculoId = calculo.lastInsertRowid as number;
+
+    const insResult = db.prepare(
+      `INSERT INTO rv_resultados (id_calculo, matricula, nome_colaborador, id_regra, id_plano, tipo_cargo, tipo_calculo, grupo_nome, valor_indicador, valor_rv, detalhes_json)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?)`
+    );
+
+    const tx = db.transaction(() => {
+      for (const r of (resultado as any).resultados) {
+        insResult.run(
+          calculoId,
+          r.matricula,
+          r.nome_colaborador,
+          0, // id_regra = 0 (sentinel for grupo-based)
+          r.id_plano,
+          r.tipo_cargo,
+          r.tipo_calculo,
+          r.grupo_nome || '',
+          r.valor_indicador ?? null,
+          r.valor_rv,
+          JSON.stringify(r.detalhes || {})
+        );
+      }
+    });
+    tx();
+
+    res.json({
+      id: calculoId,
+      calculoId,
+      periodo: (resultado as any).periodo,
+      totalColaboradores: (resultado as any).totalColaboradores,
+      totalPlanos: (resultado as any).totalPlanos,
+      totalRV: (resultado as any).totalRV,
+      resumoPlanos: (resultado as any).resumoPlanos,
+      colaboradores: (resultado as any).colaboradores,
+    });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ════════════════════════════════════════
 // CÁLCULOS (histórico)
 // ════════════════════════════════════════
 router.get('/calculos', (req, res) => {
@@ -814,16 +931,29 @@ router.get('/calculos', (req, res) => {
 });
 
 router.get('/calculos/:id', (req, res) => {
-  const calculo = db.prepare('SELECT * FROM rv_calculos WHERE id=?').get(req.params.id);
+  const calculo = db.prepare('SELECT * FROM rv_calculos WHERE id=?').get(req.params.id) as any;
   if (!calculo) return res.status(404).json({ error: 'Cálculo não encontrado' });
 
-  const resultados = db.prepare(`
-    SELECT r.*, rg.nome as regra_nome
-    FROM rv_resultados r JOIN rv_regras rg ON rg.id = r.id_regra
-    WHERE r.id_calculo=? ORDER BY r.nome_colaborador, rg.nome
-  `).all(req.params.id);
+  let resultados;
+  if (calculo.tipo === 'grupo') {
+    // Grupo-based: JOIN com rv_plano
+    resultados = db.prepare(`
+      SELECT r.*, COALESCE(p.nome, r.grupo_nome, '') as regra_nome
+      FROM rv_resultados r
+      LEFT JOIN rv_plano p ON p.id = r.id_plano
+      WHERE r.id_calculo=? ORDER BY r.nome_colaborador, r.tipo_cargo
+    `).all(req.params.id);
+  } else {
+    // Legacy: JOIN com rv_regras
+    resultados = db.prepare(`
+      SELECT r.*, COALESCE(rg.nome, '') as regra_nome
+      FROM rv_resultados r
+      LEFT JOIN rv_regras rg ON rg.id = r.id_regra
+      WHERE r.id_calculo=? ORDER BY r.nome_colaborador, COALESCE(rg.nome, '')
+    `).all(req.params.id);
+  }
 
-  res.json({ ...calculo as any, resultados });
+  res.json({ ...calculo, resultados });
 });
 
 router.put('/calculos/:id/status', adminMiddleware, (req: Request, res: Response) => {

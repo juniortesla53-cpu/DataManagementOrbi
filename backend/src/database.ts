@@ -284,6 +284,26 @@ export function initDatabase() {
     try { db.exec(sql); } catch (_) { /* column already exists */ }
   }
 
+  // ── Migrations: rv_calculos — grupo-based support ──
+  const calculosMigrations = [
+    "ALTER TABLE rv_calculos ADD COLUMN tipo TEXT DEFAULT 'regras'",
+    "ALTER TABLE rv_calculos ADD COLUMN grupo_ids TEXT",
+  ];
+  for (const sql of calculosMigrations) {
+    try { db.exec(sql); } catch (_) { /* column already exists */ }
+  }
+
+  // ── Migrations: rv_resultados — grupo-based columns ──
+  const resultadosMigrations = [
+    "ALTER TABLE rv_resultados ADD COLUMN id_plano INTEGER",
+    "ALTER TABLE rv_resultados ADD COLUMN tipo_cargo TEXT",
+    "ALTER TABLE rv_resultados ADD COLUMN tipo_calculo TEXT",
+    "ALTER TABLE rv_resultados ADD COLUMN grupo_nome TEXT",
+  ];
+  for (const sql of resultadosMigrations) {
+    try { db.exec(sql); } catch (_) { /* column already exists */ }
+  }
+
   const count = db.prepare('SELECT COUNT(*) as c FROM users').get() as any;
   if (count.c === 0) {
     seed();
