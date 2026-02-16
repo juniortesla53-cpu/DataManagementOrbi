@@ -72,7 +72,7 @@ export default function VerticalStepper({
                         ? 'bg-gradient-to-br from-purple-600 to-blue-500 text-white shadow-lg shadow-purple-500/25 scale-110'
                         : isCompleted || isPast
                           ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/20'
-                          : 'bg-nexus-bg border-2 border-nexus-border text-nexus-muted'
+                          : 'bg-gradient-to-br from-amber-400 to-yellow-500 text-white shadow-md shadow-amber-400/20'
                     }`}
                   >
                     {/* Active step pulse ring */}
@@ -99,7 +99,7 @@ export default function VerticalStepper({
                       ? 'bg-gradient-to-br from-purple-100 to-blue-100 text-purple-600 shadow-md shadow-purple-200/50 scale-105' 
                       : isCompleted || isPast
                         ? 'bg-gradient-to-br from-emerald-50 to-emerald-100 text-emerald-600 shadow-sm'
-                        : 'bg-nexus-bg text-nexus-muted'
+                        : 'bg-gradient-to-br from-amber-50 to-yellow-100 text-amber-600 shadow-sm shadow-amber-200/30'
                   }`}
                 >
                   <Icon size={18} strokeWidth={2} />
@@ -112,7 +112,7 @@ export default function VerticalStepper({
                       ? 'text-nexus-purple' 
                       : isCompleted || isPast 
                         ? 'text-emerald-600' 
-                        : 'text-nexus-text'
+                        : 'text-amber-600'
                   }`}>
                     {step.label}
                   </p>
