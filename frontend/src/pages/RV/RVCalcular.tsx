@@ -3,7 +3,7 @@ import { Building2, Target, Settings2, BarChart3, CheckCircle, Loader2, ChevronD
 import { useApi } from '../../hooks/useApi';
 import { useToast } from '../../contexts/ToastContext';
 import api from '../../api';
-import Stepper, { type StepConfig } from './components/Stepper';
+import VerticalStepper, { type StepConfig } from './components/VerticalStepper';
 import StepCliente from './components/StepCliente';
 import StepIndicadores from './components/StepIndicadores';
 import StepRegras from './components/StepRegras';
@@ -94,62 +94,47 @@ export default function RVCalcular() {
         <p className="text-xs text-nexus-muted">Siga as etapas para configurar e calcular a remuneração variável</p>
       </div>
 
-      {/* Stepper */}
-      <div className="card p-5">
-        <Stepper
-          steps={STEPS}
-          currentStep={currentStep}
-          onStepClick={goToStep}
-          completedSteps={completedSteps}
+      {/* Vertical Stepper */}
+      <VerticalStepper
+        steps={STEPS}
+        currentStep={currentStep}
+        onStepClick={goToStep}
+        completedSteps={completedSteps}
+      >
+        <StepCliente
+          clientesSelecionados={clientesSelecionados}
+          setClientesSelecionados={setClientesSelecionados}
+          onNext={nextStep}
         />
-      </div>
-
-      {/* Step content */}
-      <div>
-        {currentStep === 0 && (
-          <StepCliente
-            clientesSelecionados={clientesSelecionados}
-            setClientesSelecionados={setClientesSelecionados}
-            onNext={nextStep}
-          />
-        )}
-        {currentStep === 1 && (
-          <StepIndicadores
-            clienteIds={clientesSelecionados}
-            onNext={nextStep}
-            onBack={prevStep}
-          />
-        )}
-        {currentStep === 2 && (
-          <StepRegras
-            clienteIds={clientesSelecionados}
-            regrasSelecionadas={regrasSelecionadas}
-            setRegrasSelecionadas={setRegrasSelecionadas}
-            onNext={nextStep}
-            onBack={prevStep}
-          />
-        )}
-        {currentStep === 3 && (
-          <StepSimulacao
-            periodo={periodo}
-            setPeriodo={setPeriodo}
-            regrasSelecionadas={regrasSelecionadas}
-            simulacao={simulacao}
-            setSimulacao={setSimulacao}
-            onNext={nextStep}
-            onBack={prevStep}
-          />
-        )}
-        {currentStep === 4 && (
-          <StepConfirmacao
-            clienteId={clientesSelecionados[0] || null}
-            periodo={periodo}
-            regrasSelecionadas={regrasSelecionadas}
-            simulacao={simulacao}
-            onBack={prevStep}
-          />
-        )}
-      </div>
+        <StepIndicadores
+          clienteIds={clientesSelecionados}
+          onNext={nextStep}
+          onBack={prevStep}
+        />
+        <StepRegras
+          clienteIds={clientesSelecionados}
+          regrasSelecionadas={regrasSelecionadas}
+          setRegrasSelecionadas={setRegrasSelecionadas}
+          onNext={nextStep}
+          onBack={prevStep}
+        />
+        <StepSimulacao
+          periodo={periodo}
+          setPeriodo={setPeriodo}
+          regrasSelecionadas={regrasSelecionadas}
+          simulacao={simulacao}
+          setSimulacao={setSimulacao}
+          onNext={nextStep}
+          onBack={prevStep}
+        />
+        <StepConfirmacao
+          clienteId={clientesSelecionados[0] || null}
+          periodo={periodo}
+          regrasSelecionadas={regrasSelecionadas}
+          simulacao={simulacao}
+          onBack={prevStep}
+        />
+      </VerticalStepper>
 
       {/* Histórico de Cálculos (colapsável) */}
       <div className="card overflow-hidden">
