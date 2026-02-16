@@ -132,6 +132,7 @@ export default function RVCalcular() {
         {currentStep === 3 && (
           <StepSimulacao
             periodo={periodo}
+            setPeriodo={setPeriodo}
             regrasSelecionadas={regrasSelecionadas}
             simulacao={simulacao}
             setSimulacao={setSimulacao}
