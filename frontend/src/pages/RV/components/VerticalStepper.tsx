@@ -39,10 +39,10 @@ export default function VerticalStepper({
             {/* Vertical connector line */}
             {!isLast && (
               <div 
-                className={`absolute left-5 top-12 w-0.5 h-6 transition-all duration-300 ${
-                  isPast || isCompleted ? 'bg-emerald-400' : 'bg-nexus-border'
+                className={`absolute left-5 top-14 w-0.5 h-4 transition-all duration-500 ${
+                  isPast || isCompleted ? 'bg-gradient-to-b from-emerald-400 to-emerald-300' : 'bg-nexus-border'
                 }`}
-                style={{ zIndex: 0 }}
+                style={{ zIndex: 1 }}
               />
             )}
 
@@ -50,7 +50,7 @@ export default function VerticalStepper({
             <div 
               className={`card overflow-hidden transition-all duration-300 ${
                 isActive ? 'ring-2 ring-purple-500/30 shadow-lg shadow-purple-500/10' : ''
-              } ${isFuture ? 'opacity-60' : ''}`}
+              } ${isFuture ? 'opacity-50' : ''}`}
             >
               {/* Header */}
               <button
@@ -64,34 +64,45 @@ export default function VerticalStepper({
                       : 'cursor-not-allowed'
                 }`}
               >
-                {/* Number or Check Circle */}
-                <div
-                  className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 ${
-                    isActive
-                      ? 'bg-gradient-to-br from-purple-600 to-blue-500 text-white shadow-lg shadow-purple-500/25 scale-105'
-                      : isCompleted || isPast
-                        ? 'bg-emerald-500 text-white shadow-sm'
-                        : 'bg-nexus-bg border-2 border-nexus-border text-nexus-muted'
-                  }`}
-                >
-                  {isCompleted || (isPast && !isActive) ? (
-                    <Check size={20} strokeWidth={2.5} />
-                  ) : (
-                    <span className="font-bold text-sm">{index}</span>
+                {/* Number Circle — always shows the number */}
+                <div className="relative flex-shrink-0">
+                  <div
+                    className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 ${
+                      isActive
+                        ? 'bg-gradient-to-br from-purple-600 to-blue-500 text-white shadow-lg shadow-purple-500/25 scale-110'
+                        : isCompleted || isPast
+                          ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/20'
+                          : 'bg-nexus-bg border-2 border-nexus-border text-nexus-muted'
+                    }`}
+                  >
+                    {/* Active step pulse ring */}
+                    {isActive && (
+                      <span className="absolute inset-0 rounded-full bg-purple-500/20 animate-ping" />
+                    )}
+                    <span className="relative font-bold text-sm">{index}</span>
+                  </div>
+
+                  {/* Green check badge — overlaid on bottom-right for completed steps */}
+                  {(isCompleted || isPast) && !isActive && (
+                    <div className="absolute -bottom-0.5 -right-0.5 w-4.5 h-4.5 bg-white rounded-full flex items-center justify-center shadow-sm">
+                      <div className="w-3.5 h-3.5 bg-emerald-500 rounded-full flex items-center justify-center">
+                        <Check size={9} strokeWidth={3} className="text-white" />
+                      </div>
+                    </div>
                   )}
                 </div>
 
-                {/* Icon */}
+                {/* Icon — more prominent with glow effects */}
                 <div 
-                  className={`flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-300 ${
+                  className={`relative flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-300 ${
                     isActive 
-                      ? 'bg-purple-100 text-purple-600' 
+                      ? 'bg-gradient-to-br from-purple-100 to-blue-100 text-purple-600 shadow-md shadow-purple-200/50 scale-105' 
                       : isCompleted || isPast
-                        ? 'bg-emerald-100 text-emerald-600'
+                        ? 'bg-gradient-to-br from-emerald-50 to-emerald-100 text-emerald-600 shadow-sm'
                         : 'bg-nexus-bg text-nexus-muted'
                   }`}
                 >
-                  <Icon size={18} />
+                  <Icon size={18} strokeWidth={2} />
                 </div>
 
                 {/* Title and Description */}
@@ -106,7 +117,9 @@ export default function VerticalStepper({
                     {step.label}
                   </p>
                   {step.description && (
-                    <p className="text-xs text-nexus-muted mt-0.5">
+                    <p className={`text-xs mt-0.5 transition-colors ${
+                      isActive ? 'text-purple-400' : 'text-nexus-muted'
+                    }`}>
                       {step.description}
                     </p>
                   )}
