@@ -387,29 +387,29 @@ function seedRV() {
 
   const tx = db.transaction(() => {
     // ── Indicadores (dimensão) ──
-    ins.dim.run('VENDAS',       'Vendas Realizadas',       'Total de vendas fechadas no período',          'un',  'quantidade');
-    ins.dim.run('META_VENDAS',  'Meta de Vendas',          'Meta de vendas do período',                    'un',  'quantidade');
+    // Sem META_ — as faixas são configuradas diretamente na escala do indicador
+    // Para percentuais: numerador/denominador → valor = (num/den)*100
+    // Para quantidade/valor: valor = numerador (denominador=1)
+    ins.dim.run('VENDAS',       'Atingimento Vendas',      '% de atingimento da meta de vendas',           '%',   'percentual');
     ins.dim.run('TMA',          'Tempo Médio Atendimento', 'Duração média das chamadas em segundos',       's',   'valor');
-    ins.dim.run('META_TMA',     'Meta TMA',                'Meta de TMA em segundos',                      's',   'valor');
     ins.dim.run('CSAT',         'Satisfação do Cliente',   'Nota de satisfação do cliente (0-100)',         '%',   'percentual');
-    ins.dim.run('META_CSAT',    'Meta CSAT',               'Meta de satisfação do cliente',                 '%',   'percentual');
     ins.dim.run('ASSIDUIDADE',  'Assiduidade',             'Percentual de presença no período',             '%',   'percentual');
     ins.dim.run('QUALIDADE',    'Qualidade Monitoria',     'Nota de monitoria de qualidade (0-100)',        '%',   'percentual');
 
-    // IDs dos indicadores (1-8 na ordem acima)
-    const IND = { VENDAS: 1, META_VENDAS: 2, TMA: 3, META_TMA: 4, CSAT: 5, META_CSAT: 6, ASSIDUIDADE: 7, QUALIDADE: 8 };
+    // IDs dos indicadores (1-5 na ordem acima)
+    const IND = { VENDAS: 1, TMA: 2, CSAT: 3, ASSIDUIDADE: 4, QUALIDADE: 5 };
 
     // ── Dados fictícios (fato) ── 5 colaboradores x 6 meses ──
     const matriculas = ['USR002', 'USR003', 'USR004', 'USR005', 'USR006'];
     const meses = ['2025-07', '2025-08', '2025-09', '2025-10', '2025-11', '2025-12'];
 
-    // Perfis de desempenho por colaborador (mais realista)
+    // Perfis de desempenho por colaborador
     const perfis: Record<string, { vendas: [number, number]; tma: [number, number]; csat: [number, number]; assid: [number, number]; qual: [number, number] }> = {
-      'USR002': { vendas: [85, 130], tma: [180, 280], csat: [82, 97], assid: [88, 100], qual: [75, 98] },  // Maria - boa vendedora
-      'USR003': { vendas: [60, 110], tma: [200, 350], csat: [70, 90], assid: [80, 96],  qual: [65, 88] },  // João - irregular
-      'USR004': { vendas: [90, 140], tma: [170, 250], csat: [88, 99], assid: [92, 100], qual: [80, 96] },  // Ana - top performer
-      'USR005': { vendas: [50, 95],  tma: [250, 400], csat: [65, 85], assid: [75, 95],  qual: [60, 82] },  // Carlos - em desenvolvimento
-      'USR006': { vendas: [80, 125], tma: [190, 300], csat: [80, 95], assid: [90, 100], qual: [72, 94] },  // Fernanda - consistente
+      'USR002': { vendas: [85, 130], tma: [180, 280], csat: [82, 97], assid: [88, 100], qual: [75, 98] },
+      'USR003': { vendas: [60, 110], tma: [200, 350], csat: [70, 90], assid: [80, 96],  qual: [65, 88] },
+      'USR004': { vendas: [90, 140], tma: [170, 250], csat: [88, 99], assid: [92, 100], qual: [80, 96] },
+      'USR005': { vendas: [50, 95],  tma: [250, 400], csat: [65, 85], assid: [75, 95],  qual: [60, 82] },
+      'USR006': { vendas: [80, 125], tma: [190, 300], csat: [80, 95], assid: [90, 100], qual: [72, 94] },
     };
 
     const rand = (min: number, max: number) => Math.round(min + Math.random() * (max - min));
@@ -417,32 +417,27 @@ function seedRV() {
     for (const mat of matriculas) {
       const p = perfis[mat];
       for (const mes of meses) {
-        const metaVendas = 100;
-        const metaTMA = 240;
-        const metaCSAT = 90;
-
-        ins.fato.run(mes, mat, IND.VENDAS,      rand(p.vendas[0], p.vendas[1]), 1);
-        ins.fato.run(mes, mat, IND.META_VENDAS,  metaVendas, 1);
+        // VENDAS: percentual (numerador=vendas realizadas, denominador=meta) → valor = (num/den)*100
+        ins.fato.run(mes, mat, IND.VENDAS,      rand(p.vendas[0], p.vendas[1]), 100);
+        // TMA: valor em segundos (numerador=TMA real, denominador=1)
         ins.fato.run(mes, mat, IND.TMA,          rand(p.tma[0], p.tma[1]), 1);
-        ins.fato.run(mes, mat, IND.META_TMA,     metaTMA, 1);
-        ins.fato.run(mes, mat, IND.CSAT,         rand(p.csat[0], p.csat[1]), 1);
-        ins.fato.run(mes, mat, IND.META_CSAT,    metaCSAT, 1);
+        // CSAT: percentual (numerador=nota, denominador=100) → valor = (num/100)*100
+        ins.fato.run(mes, mat, IND.CSAT,         rand(p.csat[0], p.csat[1]), 100);
+        // ASSIDUIDADE: percentual
         ins.fato.run(mes, mat, IND.ASSIDUIDADE,  rand(p.assid[0], p.assid[1]), 100);
+        // QUALIDADE: percentual
         ins.fato.run(mes, mat, IND.QUALIDADE,    rand(p.qual[0], p.qual[1]), 100);
       }
     }
 
-    // ── Regras ──
+    // ── Regras (legado) ──
 
-    // Regra 1: Comissão de Vendas (atingimento de meta)
+    // Regra 1: Comissão de Vendas — faixas em % de atingimento
     const r1 = ins.regra.run('Comissão de Vendas', 'Comissão baseada no atingimento da meta de vendas', 'faixa', '2025-01', '2026-12').lastInsertRowid as number;
-    // Faixas: indicador = VENDAS (numerador=vendas, denominador será comparado com META_VENDAS)
-    // O motor calcula: (VENDAS / META_VENDAS) * 100 = atingimento %
     ins.faixa.run(r1, IND.VENDAS,  0,    79.99,  0,    'valor_fixo', 1);
     ins.faixa.run(r1, IND.VENDAS,  80,   99.99,  150,  'valor_fixo', 2);
     ins.faixa.run(r1, IND.VENDAS,  100,  119.99, 350,  'valor_fixo', 3);
     ins.faixa.run(r1, IND.VENDAS,  120,  999,    600,  'valor_fixo', 4);
-    // Condição: Assiduidade >= 90%
     ins.cond.run(r1, IND.ASSIDUIDADE, '>=', 90);
 
     // Regra 2: Bônus Qualidade
@@ -457,12 +452,11 @@ function seedRV() {
     ins.faixa.run(r3, IND.CSAT, 0,    89.99,  0,    'valor_fixo', 1);
     ins.faixa.run(r3, IND.CSAT, 90,   94.99,  150,  'valor_fixo', 2);
     ins.faixa.run(r3, IND.CSAT, 95,   100,    300,  'valor_fixo', 3);
-    // Condição: Assiduidade >= 85%
     ins.cond.run(r3, IND.ASSIDUIDADE, '>=', 85);
   });
 
   tx();
-  console.log('✅ Nexus RV seeded: 8 indicadores, 240 fatos, 3 regras');
+  console.log('✅ Nexus RV seeded: 5 indicadores, 150 fatos, 3 regras');
 }
 
 export default db;

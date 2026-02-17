@@ -390,22 +390,11 @@ function executarCalculoRV(periodo: string, regraIds?: number[]) {
       const dimInfo = db.prepare('SELECT * FROM rv_indicadores_dim WHERE id=?').get(idIndicadorPrincipal) as any;
 
       let valorCalc: number;
-      if (dimInfo.tipo === 'quantidade' || dimInfo.tipo === 'valor') {
-        const codigoMeta = 'META_' + dimInfo.codigo;
-        const metaDim = db.prepare('SELECT id FROM rv_indicadores_dim WHERE codigo=?').get(codigoMeta) as any;
-        if (metaDim) {
-          const metaFato = db.prepare('SELECT numerador FROM rv_indicadores_fato WHERE data=? AND matricula=? AND id_indicador=?')
-            .get(periodo, matricula, metaDim.id) as any;
-          if (metaFato && metaFato.numerador > 0) {
-            valorCalc = (valorFato.numerador / metaFato.numerador) * 100;
-          } else {
-            valorCalc = valorFato.numerador;
-          }
-        } else {
-          valorCalc = valorFato.numerador;
-        }
-      } else {
+      if (dimInfo.tipo === 'percentual') {
         valorCalc = valorFato.denominador !== 0 ? (valorFato.numerador / valorFato.denominador) * 100 : 0;
+      } else {
+        // quantidade / valor — usar numerador diretamente (faixas configuradas na mesma escala)
+        valorCalc = valorFato.numerador;
       }
 
       valorCalc = Math.round(valorCalc * 100) / 100;
@@ -592,17 +581,9 @@ function executarSimulacaoGrupo(periodo: string, grupoIds: number[]) {
         let valor: number;
         if (ind.tipo === 'percentual') {
           valor = fato.denominador !== 0 ? Math.round((fato.numerador / fato.denominador) * 100 * 100) / 100 : 0;
-        } else if (ind.tipo === 'quantidade' || ind.tipo === 'valor') {
-          const metaDim = db.prepare("SELECT id FROM rv_indicadores_dim WHERE codigo='META_' || ?").get(ind.codigo) as any;
-          if (metaDim) {
-            const metaFato = db.prepare('SELECT numerador FROM rv_indicadores_fato WHERE data=? AND matricula=? AND id_indicador=?')
-              .get(periodo, matricula, metaDim.id) as any;
-            valor = metaFato && metaFato.numerador > 0 ? Math.round((fato.numerador / metaFato.numerador) * 100 * 100) / 100 : fato.numerador;
-          } else {
-            valor = fato.numerador;
-          }
         } else {
-          valor = fato.denominador !== 0 ? Math.round((fato.numerador / fato.denominador) * 100 * 100) / 100 : 0;
+          // quantidade / valor — usar numerador diretamente
+          valor = fato.numerador;
         }
         indicadoresColab[ind.id] = { valor, numerador: fato.numerador, denominador: fato.denominador };
       }
@@ -623,13 +604,29 @@ function executarSimulacaoGrupo(periodo: string, grupoIds: number[]) {
           detalhesEleg.push({ tipo: 'indicador', indicador: e.indicador_codigo, operador: e.operador, ref: e.valor_minimo, valor: val, passou });
           if (!passou) elegOk = false;
         }
-        // Campo texto elegibilidade: comparação com perfil do colaborador
+        // Campo texto elegibilidade: comparação com perfil do colaborador (whitelist para evitar SQL injection)
         if ((e.tipo_comparacao) === 'campo' && e.campo) {
-          // Buscar valor do campo no perfil do colaborador (users table ou data source)
-          const userField = db.prepare(`SELECT ${e.campo} FROM users WHERE matricula=?`).get(matricula) as any;
-          const valorCampo = userField?.[e.campo] ?? '';
-          const passou = String(valorCampo).toLowerCase() === String(e.valor_texto).toLowerCase();
-          detalhesEleg.push({ tipo: 'campo', indicador: e.campo, operador: '=', ref: e.valor_texto, valor: valorCampo, passou });
+          const CAMPOS_PERMITIDOS = ['cargo', 'site', 'nome_completo'];
+          const campo = e.campo.toLowerCase();
+          let valorCampo = '';
+          if (CAMPOS_PERMITIDOS.includes(campo)) {
+            const userProfile = db.prepare('SELECT cargo, site, nome_completo FROM users WHERE matricula=?').get(matricula) as any;
+            valorCampo = String(userProfile?.[campo] ?? '');
+          }
+          let passou = false;
+          const valorRef = String(e.valor_texto ?? '');
+          const op = e.operador || '=';
+          if (op === '=' || op === '==') {
+            passou = valorCampo.toLowerCase() === valorRef.toLowerCase();
+          } else if (op === '!=') {
+            passou = valorCampo.toLowerCase() !== valorRef.toLowerCase();
+          } else if (op === 'LIKE') {
+            passou = valorCampo.toLowerCase().includes(valorRef.toLowerCase());
+          } else if (op === 'IN') {
+            const lista = valorRef.split(',').map(v => v.trim().toLowerCase());
+            passou = lista.includes(valorCampo.toLowerCase());
+          }
+          detalhesEleg.push({ tipo: 'campo', indicador: e.campo, operador: op, ref: valorRef, valor: valorCampo, passou });
           if (!passou) elegOk = false;
         }
       }
@@ -640,16 +637,39 @@ function executarSimulacaoGrupo(periodo: string, grupoIds: number[]) {
       if (elegOk) {
         // ── Cálculo por tipo ──
         if (plano.tipo_calculo === 'faixas') {
+          // Buscar perfil do colaborador para condições textuais (uma única vez)
+          const userProfileForCond = db.prepare('SELECT cargo, site, nome_completo FROM users WHERE matricula=?').get(matricula) as any;
+
           // Soma de payouts de todos os indicadores com regra
           for (const rem of plano.remuneracao) {
+            // ── Avaliar condições textuais da remuneração ──
+            let condMatch = true;
+            const condDetalhes: any[] = [];
+            for (const cond of (rem.condicoes || [])) {
+              const campoVal = String(userProfileForCond?.[cond.campo] ?? '');
+              const condValor = String(cond.valor ?? '');
+              let condPassed = false;
+              const condOp = cond.operador || '=';
+              if (condOp === '=' || condOp === '==') {
+                condPassed = campoVal.toLowerCase() === condValor.toLowerCase();
+              } else if (condOp === '!=') {
+                condPassed = campoVal.toLowerCase() !== condValor.toLowerCase();
+              } else if (condOp === 'LIKE' || condOp === 'contém') {
+                condPassed = campoVal.toLowerCase().includes(condValor.toLowerCase());
+              }
+              condDetalhes.push({ campo: cond.campo, operador: condOp, esperado: condValor, real: campoVal, passou: condPassed });
+              if (!condPassed) condMatch = false;
+            }
+
             const indData = indicadoresColab[rem.id_indicador];
             const valorInd = indData?.valor ?? null;
-            const faixa = valorInd !== null ? encontrarFaixa(rem.faixas, valorInd) : null;
+            // Se condições textuais não batem, payout = 0
+            const faixa = (condMatch && valorInd !== null) ? encontrarFaixa(rem.faixas, valorInd) : null;
             const payout = faixa ? faixa.valor_payout : 0;
             detalhesRem.push({
               indicador_codigo: rem.indicador_codigo, indicador_nome: rem.indicador_nome,
               valor_indicador: valorInd, faixa: faixa ? { min: faixa.faixa_min, max: faixa.faixa_max, payout: faixa.valor_payout, tipo: faixa.tipo_payout } : null,
-              payout, condicoes: rem.condicoes || [],
+              payout, condicoes: condDetalhes, condicoes_ok: condMatch,
             });
             valorRV += payout;
           }
@@ -710,6 +730,12 @@ function executarSimulacaoGrupo(periodo: string, grupoIds: number[]) {
               valorRV = Math.max(0, valorRV - reducao);
             }
           }
+        }
+
+        // ── Aplicar DSR (Descanso Semanal Remunerado) ──
+        // valor_dsr é um fator decimal (ex: 0.20 = 20% de acréscimo)
+        if (plano.valor_dsr && plano.valor_dsr > 0) {
+          valorRV = valorRV * (1 + plano.valor_dsr);
         }
       }
 
@@ -790,17 +816,7 @@ router.get('/colaboradores-periodo', (req, res) => {
         valor = fato.numerador;
       }
 
-      // Buscar meta se existir
-      let meta: number | null = null;
-      const codigoMeta = 'META_' + ind.codigo;
-      const metaDim = db.prepare('SELECT id FROM rv_indicadores_dim WHERE codigo=?').get(codigoMeta) as any;
-      if (metaDim) {
-        const metaFato = db.prepare('SELECT numerador FROM rv_indicadores_fato WHERE data=? AND matricula=? AND id_indicador=?')
-          .get(periodo as string, matricula, metaDim.id) as any;
-        if (metaFato) meta = metaFato.numerador;
-      }
-
-      return { id: ind.id, codigo: ind.codigo, nome: ind.nome, unidade: ind.unidade, tipo: ind.tipo, valor, meta };
+      return { id: ind.id, codigo: ind.codigo, nome: ind.nome, unidade: ind.unidade, tipo: ind.tipo, valor };
     }).filter(i => i.valor !== null); // Só indicadores com dados
 
     return { matricula, nome, indicadores: indicadoresData };

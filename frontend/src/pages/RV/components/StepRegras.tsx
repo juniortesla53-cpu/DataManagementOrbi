@@ -334,7 +334,7 @@ function CargoPlanoEditor({ plano, onChange, allPlanos, indicadores }: {
                               <div><label className="block text-[9px] text-nexus-muted mb-1 font-semibold">Payout</label><input type="number" value={f.valor_payout} onChange={e => updateFaixa(ri, fi, 'valor_payout', e.target.value)} className="w-full px-2 py-1.5 border border-nexus-border rounded-lg text-xs bg-white" /></div>
                               <div><label className="block text-[9px] text-nexus-muted mb-1 font-semibold">Tipo</label>
                                 <select value={f.tipo_payout} onChange={e => updateFaixa(ri, fi, 'tipo_payout', e.target.value)} className="w-full px-1 py-1.5 border border-nexus-border rounded-lg text-[10px] bg-white">
-                                  <option value="valor_fixo">R$ Fixo</option><option value="percentual_salario">% Salário</option><option value="percentual_indicador">% Indicador</option>
+                                  <option value="valor_fixo">R$ Fixo</option>
                                 </select>
                               </div>
                             </div>
