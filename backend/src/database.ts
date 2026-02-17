@@ -260,6 +260,21 @@ export function initDatabase() {
       tipo TEXT DEFAULT 'texto',
       ordem INTEGER DEFAULT 0
     );
+
+    -- ══════════════════════════════════════
+    -- Indicadores Personalizados (expressões combinadas)
+    -- ══════════════════════════════════════
+    CREATE TABLE IF NOT EXISTS rv_indicadores_personalizados (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      codigo TEXT UNIQUE NOT NULL,
+      nome TEXT NOT NULL,
+      descricao TEXT,
+      expressao TEXT NOT NULL,
+      unidade TEXT DEFAULT '%',
+      id_cliente INTEGER REFERENCES rv_clientes(id),
+      ativo INTEGER DEFAULT 1,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
   `);
 
   // ── Migrations: add columns to rv_plano (idempotent) ──
@@ -301,6 +316,25 @@ export function initDatabase() {
     "ALTER TABLE rv_resultados ADD COLUMN grupo_nome TEXT",
   ];
   for (const sql of resultadosMigrations) {
+    try { db.exec(sql); } catch (_) { /* column already exists */ }
+  }
+
+  // ── Migrations: rv_plano_remuneracao_faixas — tipos de retorno variados ──
+  const faixasTiposRetornoMigrations = [
+    "ALTER TABLE rv_plano_remuneracao_faixas ADD COLUMN tipo_retorno TEXT DEFAULT 'payout'",
+    "ALTER TABLE rv_plano_remuneracao_faixas ADD COLUMN retorno_texto TEXT",
+    "ALTER TABLE rv_plano_remuneracao_faixas ADD COLUMN retorno_id_indicador INTEGER",
+  ];
+  for (const sql of faixasTiposRetornoMigrations) {
+    try { db.exec(sql); } catch (_) { /* column already exists */ }
+  }
+
+  // ── Migrations: rv_plano_elegibilidade — operadores lógicos compostos ──
+  const elegibilidadeOperadoresMigrations = [
+    "ALTER TABLE rv_plano_elegibilidade ADD COLUMN grupo_logico INTEGER DEFAULT 0",
+    "ALTER TABLE rv_plano_elegibilidade ADD COLUMN operador_logico TEXT DEFAULT 'AND'",
+  ];
+  for (const sql of elegibilidadeOperadoresMigrations) {
     try { db.exec(sql); } catch (_) { /* column already exists */ }
   }
 

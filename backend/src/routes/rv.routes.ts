@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import db from '../database';
 import { authMiddleware, adminMiddleware } from '../auth';
+import { avaliarExpressao, extrairIndicadoresReferenciados } from '../utils/expressionParser';
 
 const router = Router();
 router.use(authMiddleware);
@@ -34,6 +35,124 @@ router.put('/clientes/:id', adminMiddleware, (req: Request, res: Response) => {
 router.delete('/clientes/:id', adminMiddleware, (req: Request, res: Response) => {
   db.prepare('UPDATE rv_clientes SET ativo=0 WHERE id=?').run(req.params.id);
   res.json({ success: true });
+});
+
+// ════════════════════════════════════════
+// INDICADORES PERSONALIZADOS (expressões combinadas)
+// ════════════════════════════════════════
+router.get('/indicadores-personalizados', (req, res) => {
+  const { id_cliente } = req.query;
+  let sql = 'SELECT * FROM rv_indicadores_personalizados WHERE 1=1';
+  const params: any[] = [];
+  if (id_cliente) {
+    sql += ' AND (id_cliente = ? OR id_cliente IS NULL)';
+    params.push(id_cliente);
+  }
+  sql += ' ORDER BY codigo';
+  const rows = db.prepare(sql).all(...params) as any[];
+  
+  // Para cada indicador personalizado, extrair os indicadores referenciados
+  for (const row of rows) {
+    row.indicadores_referenciados = extrairIndicadoresReferenciados(row.expressao);
+  }
+  
+  res.json(rows);
+});
+
+router.get('/indicadores-personalizados/:id', (req, res) => {
+  const row = db.prepare('SELECT * FROM rv_indicadores_personalizados WHERE id=?').get(req.params.id) as any;
+  if (!row) return res.status(404).json({ error: 'Indicador personalizado não encontrado' });
+  
+  row.indicadores_referenciados = extrairIndicadoresReferenciados(row.expressao);
+  res.json(row);
+});
+
+router.post('/indicadores-personalizados', adminMiddleware, (req: Request, res: Response) => {
+  const { codigo, nome, descricao, expressao, unidade, id_cliente } = req.body;
+  
+  if (!codigo || !nome || !expressao) {
+    return res.status(400).json({ error: 'Código, nome e expressão são obrigatórios' });
+  }
+  
+  // Validar expressão
+  try {
+    const teste = avaliarExpressao(expressao, { TESTE: 100 });
+    // Se não lançou exceção, a sintaxe está ok
+  } catch (e: any) {
+    return res.status(400).json({ error: `Expressão inválida: ${e.message}` });
+  }
+  
+  try {
+    const r = db.prepare(`
+      INSERT INTO rv_indicadores_personalizados (codigo, nome, descricao, expressao, unidade, id_cliente)
+      VALUES (?,?,?,?,?,?)
+    `).run(codigo, nome, descricao || '', expressao, unidade || '%', id_cliente || null);
+    
+    res.json({ id: r.lastInsertRowid });
+  } catch (e: any) {
+    res.status(400).json({ error: e.message.includes('UNIQUE') ? 'Código já existe' : e.message });
+  }
+});
+
+router.put('/indicadores-personalizados/:id', adminMiddleware, (req: Request, res: Response) => {
+  const { codigo, nome, descricao, expressao, unidade, ativo, id_cliente } = req.body;
+  
+  // Validar expressão
+  if (expressao) {
+    try {
+      const teste = avaliarExpressao(expressao, { TESTE: 100 });
+    } catch (e: any) {
+      return res.status(400).json({ error: `Expressão inválida: ${e.message}` });
+    }
+  }
+  
+  db.prepare(`
+    UPDATE rv_indicadores_personalizados 
+    SET codigo=?, nome=?, descricao=?, expressao=?, unidade=?, ativo=?, id_cliente=?
+    WHERE id=?
+  `).run(codigo, nome, descricao, expressao, unidade, ativo ?? 1, id_cliente || null, req.params.id);
+  
+  res.json({ success: true });
+});
+
+router.delete('/indicadores-personalizados/:id', adminMiddleware, (req: Request, res: Response) => {
+  db.prepare('UPDATE rv_indicadores_personalizados SET ativo=0 WHERE id=?').run(req.params.id);
+  res.json({ success: true });
+});
+
+// Testar expressão sem persistir
+router.post('/indicadores-personalizados/testar-expressao', (req: Request, res: Response) => {
+  const { expressao, valores } = req.body;
+  
+  if (!expressao) {
+    return res.status(400).json({ error: 'Expressão é obrigatória' });
+  }
+  
+  try {
+    const indicadores = extrairIndicadoresReferenciados(expressao);
+    const valoresTeste = valores || {};
+    
+    // Preencher valores faltantes com 100 para teste
+    for (const ind of indicadores) {
+      if (!(ind in valoresTeste)) {
+        valoresTeste[ind] = 100;
+      }
+    }
+    
+    const resultado = avaliarExpressao(expressao, valoresTeste);
+    
+    res.json({
+      valido: true,
+      indicadores_referenciados: indicadores,
+      valores_usados: valoresTeste,
+      resultado
+    });
+  } catch (e: any) {
+    res.status(400).json({ 
+      valido: false,
+      error: e.message 
+    });
+  }
 });
 
 // ════════════════════════════════════════
@@ -235,6 +354,7 @@ function avaliarCondicao(operador: string, valor: number, referencia: number): b
     case '<':  return valor < referencia;
     case '==': return valor === referencia;
     case '!=': return valor !== referencia;
+    case '<>': return valor !== referencia; // alias de !=
     default: return false;
   }
 }
@@ -511,8 +631,9 @@ function executarSimulacaoGrupo(periodo: string, grupoIds: number[]) {
   const matriculas = db.prepare('SELECT DISTINCT matricula FROM rv_indicadores_fato WHERE data=?').all(periodo) as any[];
   if (matriculas.length === 0) return { error: `Nenhum dado encontrado para o período ${periodo}` };
 
-  // ── 2. Buscar todos os indicadores ──
+  // ── 2. Buscar todos os indicadores (dim + personalizados) ──
   const todosIndicadores = db.prepare('SELECT * FROM rv_indicadores_dim WHERE ativo=1').all() as any[];
+  const indicadoresPersonalizados = db.prepare('SELECT * FROM rv_indicadores_personalizados WHERE ativo=1').all() as any[];
 
   // ── 3. Carregar planos dos grupos selecionados ──
   const placeholders = grupoIds.map(() => '?').join(',');
@@ -574,6 +695,8 @@ function executarSimulacaoGrupo(periodo: string, grupoIds: number[]) {
 
     // Indicadores do colaborador
     const indicadoresColab: Record<number, { valor: number; numerador: number; denominador: number }> = {};
+    const indicadoresColabPorCodigo: Record<string, number> = {}; // Para facilitar lookup no parser
+    
     for (const ind of todosIndicadores) {
       const fato = db.prepare('SELECT numerador, denominador FROM rv_indicadores_fato WHERE data=? AND matricula=? AND id_indicador=?')
         .get(periodo, matricula, ind.id) as any;
@@ -586,6 +709,23 @@ function executarSimulacaoGrupo(periodo: string, grupoIds: number[]) {
           valor = fato.numerador;
         }
         indicadoresColab[ind.id] = { valor, numerador: fato.numerador, denominador: fato.denominador };
+        indicadoresColabPorCodigo[ind.codigo] = valor;
+      }
+    }
+
+    // ── Calcular indicadores personalizados ──
+    for (const indP of indicadoresPersonalizados) {
+      const resultado = avaliarExpressao(indP.expressao, indicadoresColabPorCodigo);
+      if (resultado !== null) {
+        // Usar IDs negativos para indicadores personalizados (para diferenciar de dim)
+        const customId = `custom_${indP.id}`;
+        indicadoresColab[customId as any] = { 
+          valor: Math.round(resultado * 100) / 100, 
+          numerador: resultado, 
+          denominador: 1 
+        };
+        // Também adicionar ao lookup por código
+        indicadoresColabPorCodigo[indP.codigo] = Math.round(resultado * 100) / 100;
       }
     }
 
@@ -593,42 +733,96 @@ function executarSimulacaoGrupo(periodo: string, grupoIds: number[]) {
     let totalColabRV = 0;
 
     for (const plano of orderedPlanos) {
-      // ── Elegibilidade ──
+      // ── Elegibilidade com suporte a grupos lógicos (AND/OR) ──
       let elegOk = true;
       const detalhesEleg: any[] = [];
+      
+      // Agrupar condições por grupo_logico
+      const grupos: Record<number, any[]> = {};
       for (const e of plano.elegibilidade) {
-        if ((e.tipo_comparacao || 'indicador') === 'indicador' && e.id_indicador) {
-          const indData = indicadoresColab[e.id_indicador];
-          const val = indData?.valor ?? null;
-          const passou = val !== null && avaliarCondicao(e.operador, val, e.valor_minimo);
-          detalhesEleg.push({ tipo: 'indicador', indicador: e.indicador_codigo, operador: e.operador, ref: e.valor_minimo, valor: val, passou });
-          if (!passou) elegOk = false;
-        }
-        // Campo texto elegibilidade: comparação com perfil do colaborador (whitelist para evitar SQL injection)
-        if ((e.tipo_comparacao) === 'campo' && e.campo) {
-          const CAMPOS_PERMITIDOS = ['cargo', 'site', 'nome_completo'];
-          const campo = e.campo.toLowerCase();
-          let valorCampo = '';
-          if (CAMPOS_PERMITIDOS.includes(campo)) {
-            const userProfile = db.prepare('SELECT cargo, site, nome_completo FROM users WHERE matricula=?').get(matricula) as any;
-            valorCampo = String(userProfile?.[campo] ?? '');
-          }
+        const g = e.grupo_logico || 0;
+        if (!grupos[g]) grupos[g] = [];
+        grupos[g].push(e);
+      }
+      
+      // Avaliar cada grupo
+      const resultadosGrupos: boolean[] = [];
+      for (const [gId, conds] of Object.entries(grupos)) {
+        let grupoOk = true;
+        
+        for (const e of conds) {
           let passou = false;
-          const valorRef = String(e.valor_texto ?? '');
-          const op = e.operador || '=';
-          if (op === '=' || op === '==') {
-            passou = valorCampo.toLowerCase() === valorRef.toLowerCase();
-          } else if (op === '!=') {
-            passou = valorCampo.toLowerCase() !== valorRef.toLowerCase();
-          } else if (op === 'LIKE') {
-            passou = valorCampo.toLowerCase().includes(valorRef.toLowerCase());
-          } else if (op === 'IN') {
-            const lista = valorRef.split(',').map(v => v.trim().toLowerCase());
-            passou = lista.includes(valorCampo.toLowerCase());
+          
+          if ((e.tipo_comparacao || 'indicador') === 'indicador' && e.id_indicador) {
+            // Suportar indicadores personalizados também (custom_X)
+            let indData = indicadoresColab[e.id_indicador];
+            
+            // Se não encontrou como ID normal, verificar se é um indicador personalizado
+            if (!indData) {
+              const indPers = indicadoresPersonalizados.find(ip => ip.id === e.id_indicador);
+              if (indPers) {
+                indData = indicadoresColab[`custom_${indPers.id}` as any];
+              }
+            }
+            
+            const val = indData?.valor ?? null;
+            passou = val !== null && avaliarCondicao(e.operador, val, e.valor_minimo);
+            detalhesEleg.push({ 
+              tipo: 'indicador', 
+              indicador: e.indicador_codigo, 
+              operador: e.operador, 
+              ref: e.valor_minimo, 
+              valor: val, 
+              passou, 
+              grupo: gId 
+            });
           }
-          detalhesEleg.push({ tipo: 'campo', indicador: e.campo, operador: op, ref: valorRef, valor: valorCampo, passou });
-          if (!passou) elegOk = false;
+          // Campo texto elegibilidade
+          else if ((e.tipo_comparacao) === 'campo' && e.campo) {
+            const CAMPOS_PERMITIDOS = ['cargo', 'site', 'nome_completo'];
+            const campo = e.campo.toLowerCase();
+            let valorCampo = '';
+            if (CAMPOS_PERMITIDOS.includes(campo)) {
+              const userProfile = db.prepare('SELECT cargo, site, nome_completo FROM users WHERE matricula=?').get(matricula) as any;
+              valorCampo = String(userProfile?.[campo] ?? '');
+            }
+            const valorRef = String(e.valor_texto ?? '');
+            const op = e.operador || '=';
+            if (op === '=' || op === '==') {
+              passou = valorCampo.toLowerCase() === valorRef.toLowerCase();
+            } else if (op === '!=' || op === '<>') {
+              passou = valorCampo.toLowerCase() !== valorRef.toLowerCase();
+            } else if (op === 'LIKE') {
+              passou = valorCampo.toLowerCase().includes(valorRef.toLowerCase());
+            } else if (op === 'IN') {
+              const lista = valorRef.split(',').map(v => v.trim().toLowerCase());
+              passou = lista.includes(valorCampo.toLowerCase());
+            } else if (op === 'NOT_LIKE') {
+              passou = !valorCampo.toLowerCase().includes(valorRef.toLowerCase());
+            }
+            detalhesEleg.push({ 
+              tipo: 'campo', 
+              indicador: e.campo, 
+              operador: op, 
+              ref: valorRef, 
+              valor: valorCampo, 
+              passou, 
+              grupo: gId 
+            });
+          }
+          
+          if (!passou) grupoOk = false; // AND interno ao grupo
         }
+        
+        resultadosGrupos.push(grupoOk);
+      }
+      
+      // Combinar grupos com operador lógico
+      if (resultadosGrupos.length === 0) {
+        elegOk = true; // Sem condições = todos elegíveis
+      } else {
+        const temOR = plano.elegibilidade.some((e: any) => e.operador_logico === 'OR');
+        elegOk = temOR ? resultadosGrupos.some(r => r) : resultadosGrupos.every(r => r);
       }
 
       let valorRV = 0;
@@ -652,7 +846,7 @@ function executarSimulacaoGrupo(periodo: string, grupoIds: number[]) {
               const condOp = cond.operador || '=';
               if (condOp === '=' || condOp === '==') {
                 condPassed = campoVal.toLowerCase() === condValor.toLowerCase();
-              } else if (condOp === '!=') {
+              } else if (condOp === '!=' || condOp === '<>') {
                 condPassed = campoVal.toLowerCase() !== condValor.toLowerCase();
               } else if (condOp === 'LIKE' || condOp === 'contém') {
                 condPassed = campoVal.toLowerCase().includes(condValor.toLowerCase());
@@ -661,15 +855,66 @@ function executarSimulacaoGrupo(periodo: string, grupoIds: number[]) {
               if (!condPassed) condMatch = false;
             }
 
-            const indData = indicadoresColab[rem.id_indicador];
+            // Suportar indicadores personalizados na remuneração
+            let indData = indicadoresColab[rem.id_indicador];
+            if (!indData) {
+              const indPers = indicadoresPersonalizados.find(ip => ip.id === rem.id_indicador);
+              if (indPers) {
+                indData = indicadoresColab[`custom_${indPers.id}` as any];
+              }
+            }
+            
             const valorInd = indData?.valor ?? null;
             // Se condições textuais não batem, payout = 0
             const faixa = (condMatch && valorInd !== null) ? encontrarFaixa(rem.faixas, valorInd) : null;
-            const payout = faixa ? faixa.valor_payout : 0;
+            
+            let payout = 0;
+            let tipo_retorno = 'payout';
+            let retorno_texto: string | undefined;
+            let retorno_indicador_valor: number | undefined;
+            
+            if (faixa) {
+              tipo_retorno = faixa.tipo_retorno || 'payout';
+              
+              if (tipo_retorno === 'payout') {
+                payout = faixa.valor_payout;
+              } else if (tipo_retorno === 'texto') {
+                retorno_texto = faixa.retorno_texto || '';
+                payout = 0; // Texto não adiciona ao valor monetário
+              } else if (tipo_retorno === 'indicador') {
+                // Buscar valor do indicador referenciado
+                const refId = faixa.retorno_id_indicador;
+                if (refId) {
+                  if (refId < 0) {
+                    // Indicador personalizado (id = abs(refId))
+                    const customData = indicadoresColab[`custom_${Math.abs(refId)}` as any];
+                    retorno_indicador_valor = customData?.valor ?? 0;
+                  } else {
+                    // Indicador normal
+                    const normalData = indicadoresColab[refId];
+                    retorno_indicador_valor = normalData?.valor ?? 0;
+                  }
+                  payout = retorno_indicador_valor || 0;
+                }
+              }
+            }
+            
             detalhesRem.push({
-              indicador_codigo: rem.indicador_codigo, indicador_nome: rem.indicador_nome,
-              valor_indicador: valorInd, faixa: faixa ? { min: faixa.faixa_min, max: faixa.faixa_max, payout: faixa.valor_payout, tipo: faixa.tipo_payout } : null,
-              payout, condicoes: condDetalhes, condicoes_ok: condMatch,
+              indicador_codigo: rem.indicador_codigo, 
+              indicador_nome: rem.indicador_nome,
+              valor_indicador: valorInd, 
+              faixa: faixa ? { 
+                min: faixa.faixa_min, 
+                max: faixa.faixa_max, 
+                payout: faixa.valor_payout, 
+                tipo: faixa.tipo_payout 
+              } : null,
+              payout, 
+              tipo_retorno,
+              retorno_texto,
+              retorno_indicador_valor,
+              condicoes: condDetalhes, 
+              condicoes_ok: condMatch,
             });
             valorRV += payout;
           }
