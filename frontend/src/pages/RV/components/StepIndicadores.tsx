@@ -126,85 +126,72 @@ export default function StepIndicadores({ clienteIds, onNext, onBack }: Props) {
 
   return (
     <div className="space-y-5 animate-fadeIn">
-      {/* Header */}
-      <div className="card p-5">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-purple-100 flex items-center justify-center">
-              <Target size={16} className="text-nexus-purple" />
-            </div>
-            <div>
-              <h3 className="text-sm font-semibold text-nexus-text">Indicadores (KPIs)</h3>
-              <p className="text-[10px] text-nexus-muted">Verifique os indicadores que compõem a RV. Adicione ou edite conforme necessário.</p>
-            </div>
-          </div>
-          <button onClick={openNew} className="flex items-center gap-1.5 px-3 py-1.5 btn-gradient rounded-lg text-xs font-semibold">
-            <Plus size={14} /> Novo
-          </button>
+      {/* Header + Botão criar */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-lg font-bold text-nexus-text">Indicadores (KPIs)</h2>
+          <p className="text-xs text-nexus-muted mt-1">Verifique os indicadores que compõem a RV ou crie novos</p>
         </div>
+        <button onClick={openNew} className="flex items-center gap-2 px-4 py-2 btn-gradient rounded-lg text-xs font-semibold">
+          <Plus size={14} /> Novo Indicador
+        </button>
+      </div>
 
-        {/* Resumo */}
-        <div className="grid grid-cols-3 gap-3 mb-4">
-          <div className="bg-nexus-bg rounded-lg p-3 text-center">
-            <p className="text-lg font-bold text-nexus-text">{ativos.length}</p>
-            <p className="text-[10px] text-nexus-muted">Ativos</p>
-          </div>
-          <div className="bg-nexus-bg rounded-lg p-3 text-center">
-            <p className="text-lg font-bold text-nexus-text">{ativos.filter(i => i.tipo === 'percentual').length}</p>
-            <p className="text-[10px] text-nexus-muted">Percentuais</p>
-          </div>
-          <div className="bg-nexus-bg rounded-lg p-3 text-center">
-            <p className="text-lg font-bold text-nexus-text">{ativos.filter(i => i.tipo !== 'percentual').length}</p>
-            <p className="text-[10px] text-nexus-muted">Quantidade/Valor</p>
-          </div>
+      {/* Resumo compacto */}
+      <div className="flex items-center gap-3 flex-wrap">
+        <div className="flex items-center gap-2 px-3 py-1.5 bg-purple-50 border border-purple-200 rounded-lg">
+          <Target size={14} className="text-nexus-purple" />
+          <span className="text-xs font-semibold text-nexus-purple">{ativos.length} ativos</span>
+        </div>
+        <div className="flex items-center gap-2 px-3 py-1.5 bg-nexus-bg border border-nexus-border rounded-lg">
+          <span className="text-xs text-nexus-muted">{ativos.filter(i => i.tipo === 'percentual').length} percentuais</span>
+        </div>
+        <div className="flex items-center gap-2 px-3 py-1.5 bg-nexus-bg border border-nexus-border rounded-lg">
+          <span className="text-xs text-nexus-muted">{ativos.filter(i => i.tipo !== 'percentual').length} qtd/valor</span>
         </div>
       </div>
 
-      {/* Tabela */}
-      <div className="card overflow-hidden">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-nexus-border bg-nexus-bg text-nexus-muted text-xs">
-              <th className="text-left p-3 font-semibold">Código</th>
-              <th className="text-left p-3 font-semibold">Nome</th>
-              <th className="text-left p-3 font-semibold">Unidade</th>
-              <th className="text-left p-3 font-semibold">Tipo</th>
-              <th className="text-left p-3 font-semibold">Status</th>
-              <th className="p-3 w-20"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {indicadores.map(i => (
-              <tr key={i.id} className={`border-b border-nexus-borderLight hover:bg-nexus-bg/50 transition-colors ${!i.ativo ? 'opacity-60 bg-gray-50/50' : ''}`}>
-                <td className={`p-3 font-mono text-xs font-semibold ${i.ativo ? 'text-nexus-purple' : 'text-nexus-muted'}`}>{i.codigo}</td>
-                <td className={`p-3 font-medium ${i.ativo ? 'text-nexus-text' : 'text-nexus-muted'}`}>{i.nome}</td>
-                <td className="p-3 text-nexus-textSecondary">{i.unidade}</td>
-                <td className="p-3">
-                  <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-slate-100 text-slate-600">{i.tipo}</span>
-                </td>
-                <td className="p-3">
-                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${i.ativo ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-600'}`}>
-                    {i.ativo ? 'Ativo' : 'Inativo'}
-                  </span>
-                </td>
-                <td className="p-3 text-right space-x-1">
-                  <button
-                    onClick={() => toggleAtivo(i)}
-                    className={`p-1 transition-colors ${i.ativo ? 'text-emerald-600 hover:text-emerald-700' : 'text-nexus-muted hover:text-nexus-text'}`}
-                    title={i.ativo ? 'Desativar' : 'Ativar'}
-                  >
-                    <Power size={14} />
-                  </button>
-                  <button onClick={() => openEdit(i)} className="p-1 text-nexus-muted hover:text-nexus-purple transition-colors"><Edit2 size={14} /></button>
-                  <button onClick={() => remove(i.id)} className="p-1 text-nexus-muted hover:text-nexus-danger transition-colors"><Trash2 size={14} /></button>
-                </td>
-              </tr>
-            ))}
-            {indicadores.length === 0 && (
-              <tr><td colSpan={6} className="p-8 text-center text-nexus-muted text-sm">Nenhum indicador cadastrado. Crie pelo menos um para continuar.</td></tr>
-            )}
-          </tbody>
-        </table>
+      {/* Lista de indicadores — cards compactos */}
+      <div className="space-y-2">
+        {indicadores.map(i => (
+          <div key={i.id} className={`card p-3 flex items-center gap-3 transition-all ${!i.ativo ? 'opacity-50 bg-gray-50/50' : ''}`}>
+            {/* Código */}
+            <span className={`font-mono text-xs font-bold min-w-[100px] ${i.ativo ? 'text-nexus-purple' : 'text-nexus-muted'}`}>{i.codigo}</span>
+
+            {/* Nome */}
+            <span className={`flex-1 text-sm font-medium ${i.ativo ? 'text-nexus-text' : 'text-nexus-muted'}`}>{i.nome}</span>
+
+            {/* Badges inline */}
+            <div className="flex items-center gap-1.5 flex-shrink-0">
+              <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-slate-100 text-slate-600">{i.unidade}</span>
+              <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-blue-50 text-blue-600">{i.tipo}</span>
+              <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${i.ativo ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-600'}`}>
+                {i.ativo ? 'Ativo' : 'Inativo'}
+              </span>
+            </div>
+
+            {/* Ações */}
+            <div className="flex items-center gap-1 flex-shrink-0 ml-1">
+              <button
+                onClick={() => toggleAtivo(i)}
+                className={`p-1.5 rounded-lg transition-colors ${i.ativo ? 'text-emerald-600 hover:bg-emerald-50' : 'text-nexus-muted hover:bg-nexus-bg'}`}
+                title={i.ativo ? 'Desativar' : 'Ativar'}
+              >
+                <Power size={14} />
+              </button>
+              <button onClick={() => openEdit(i)} className="p-1.5 text-nexus-muted hover:text-nexus-purple hover:bg-purple-50 rounded-lg transition-colors"><Edit2 size={14} /></button>
+              <button onClick={() => remove(i.id)} className="p-1.5 text-nexus-muted hover:text-nexus-danger hover:bg-red-50 rounded-lg transition-colors"><Trash2 size={14} /></button>
+            </div>
+          </div>
+        ))}
+
+        {indicadores.length === 0 && (
+          <div className="card p-8 text-center">
+            <Target size={40} className="mx-auto mb-3 text-nexus-muted opacity-30" />
+            <p className="text-sm text-nexus-muted">Nenhum indicador cadastrado.</p>
+            <button onClick={openNew} className="mt-3 btn-gradient text-xs px-4 py-2 rounded-lg">Criar primeiro indicador</button>
+          </div>
+        )}
       </div>
 
       {/* Navegação */}
